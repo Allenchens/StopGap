@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AccessMap - Supported by StopGap</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body, html { height: 100%; margin: 0; overflow: hidden; }
+        #map { height: 100%; width: 100%; z-index: 0; }
+
+        /* Popup Styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 0.75rem;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .leaflet-popup-content { margin: 0; width: 240px !important; }
+        .leaflet-popup-tip { background: white; }
+
+        /* Pin Styling */
+        .custom-pin { background: none; border: none; }
+        .pin-marker {
+            -webkit-text-stroke: 2px white;
+            paint-order: stroke fill;
+            filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.4));
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pin-marker:hover { transform: scale(1.2) translateY(-8px); }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .animate-pulse-ring { animation: pulse-ring 1.5s infinite; }
+
+        /* Control Overrides */
+        .leaflet-control-layers {
+            border: none !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+            border-radius: 0.5rem !important;
+            font-family: ui-sans-serif, system-ui, sans-serif !important;
+            padding: 4px !important;
+        }
+        .leaflet-top.leaflet-right { margin-top: 70px; }
+
+        /* Focus outline for accessibility */
+        *:focus-visible {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-slate-800">
+
+    <!-- Top Navigation Bar -->
+    <header class="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-md shadow-md px-4 py-3 flex justify-between items-center border-b border-gray-200">
+        <div class="flex items-center gap-3">
+            <div class="bg-red-600 text-white p-1.5 rounded-md shadow-sm" aria-hidden="true">
+                <i class="ph-bold ph-wheelchair text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-slate-900 tracking-tight leading-none">AccessMap</h1>
+                <p class="text-[10px] text-slate-500 font-bold tracking-wide uppercase">Community Accessibility Project</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <div id="connectionStatus" role="status" aria-live="polite" class="hidden md:flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                <div class="w-2 h-2 rounded-full bg-orange-400 animate-pulse" id="statusDot" aria-hidden="true"></div>
+                <span class="text-xs font-semibold text-slate-600" id="statusText">Connecting...</span>
+            </div>
+
+            <button id="helpBtn" onclick="openHelpModal()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1">
+                <i class="ph-bold ph-hand-heart" aria-hidden="true"></i>
+                <span class="hidden sm:inline">How to Help</span>
+                <span class="sr-only md:hidden">Help</span>
+            </button>
+
+            <button id="aboutBtn" onclick="openAboutModal()" class="bg-slate-900 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1">
+                <i class="ph-bold ph-info" aria-hidden="true"></i>
+                <span class="hidden sm:inline">About</span>
+                <span class="sr-only md:hidden">About</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Map Container -->
+    <main id="map" aria-label="Interactive map of accessible locations in Toronto"></main>
+
+    <!-- Modal 1: How to Help -->
+    <div id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in overflow-hidden focus:outline-none" tabindex="-1">
+            <div class="bg-red-600 p-5 text-white flex justify-between items-center">
+                <h2 id="helpTitle" class="font-bold text-xl flex items-center gap-2">
+                    <i class="ph-bold ph-hand-heart text-2xl"></i> How to Help
+                </h2>
+                <button onclick="closeHelpModal()" aria-label="Close help modal" class="hover:bg-white/20 rounded-full p-1 transition-colors">
+                    <i class="ph-bold ph-x text-xl" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                    <p class="text-sm text-slate-700 font-medium">Contribute to the map by logging locations:</p>
+                    <ul class="text-sm text-slate-600 space-y-3">
+                        <li class="flex items-start gap-3">
+                            <div class="bg-green-100 p-1.5 rounded-full text-green-600 mt-0.5"><i class="ph-fill ph-check-circle" aria-hidden="true"></i></div>
+                            <div>
+                                <strong class="text-slate-800">Accessible Entry</strong><br>
+                                Mark stores with no steps, or where a permanent ramp/automatic door exists.
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="bg-red-100 p-1.5 rounded-full text-red-600 mt-0.5"><i class="ph-fill ph-prohibit" aria-hidden="true"></i></div>
+                            <div>
+                                <strong class="text-slate-800">Needs Ramp / Barrier</strong><br>
+                                Mark stores with a single step entry or other barriers preventing access.
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="mt-6 text-center">
+                    <button onclick="closeHelpModal()" class="w-full px-4 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors">
+                        Got it, I'm ready to map!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: About StopGap -->
+    <div id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in overflow-hidden focus:outline-none" tabindex="-1">
+            <div class="bg-slate-900 p-6 text-white text-center">
+                <i class="ph-bold ph-ramp text-5xl mb-2 inline-block text-red-500" aria-hidden="true"></i>
+                <h2 id="aboutTitle" class="font-bold text-2xl">Bridging the Gap</h2>
+                <p class="text-slate-400 text-sm mt-1">Creating a world where every space is accessible.</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    <strong>AccessMap</strong> is a community tool inspired by the <span class="font-bold text-slate-900">StopGap Foundation</span>.
+                </p>
+                <p class="text-slate-600 text-sm leading-relaxed">
+                    StopGap provides brightly colored ramps to single-step businesses, raising awareness about the importance of barrier-free spaces and ensuring everyone can access their community.
+                </p>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="closeAboutModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
+                        Close
+                    </button>
+                    <a href="https://stopgap.ca/" target="_blank" class="flex-1 text-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">
+                        Visit StopGap.ca <span class="sr-only">(opens in new tab)</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Pin Modal -->
+    <div id="pinModal" role="dialog" aria-modal="true" aria-labelledby="pinTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fade-in overflow-hidden transform transition-all focus:outline-none" tabindex="-1">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h2 id="pinTitle" class="font-bold text-lg flex items-center gap-2"><i class="ph-bold ph-plus-circle" aria-hidden="true"></i> Log Location</h2>
+                <button onclick="closeModal()" aria-label="Close modal" class="hover:bg-white/20 rounded-full p-1 transition-colors">
+                    <i class="ph-bold ph-x text-xl" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <form id="pinForm" onsubmit="handlePinSubmit(event)" class="p-6 space-y-4">
+
+                <!-- Voice AI Button -->
+                <div class="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                    <button type="button" id="voiceBtn" onclick="toggleVoiceFill()" class="w-full flex items-center justify-center gap-2 text-sm font-bold text-blue-700 hover:text-blue-800 transition-colors py-1">
+                        <span id="voiceIconWrapper" class="bg-blue-200 p-1.5 rounded-full transition-all"><i class="ph-fill ph-microphone text-lg"></i></span>
+                        <span id="voiceBtnText">Tap to Describe with Voice</span>
+                    </button>
+                    <p class="text-[10px] text-blue-500 text-center mt-1">"Cat Cafe has a big step"</p>
+                </div>
+
+                <div class="relative">
+                    <label for="pinName" class="block text-xs font-bold text-gray-600 uppercase mb-1">Business / Location Name</label>
+                    <input type="text" id="pinName" required placeholder="e.g. The Corner Bakery"
+                        class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-slate-500 focus:border-slate-500 block p-2.5 outline-none transition-all focus:bg-white">
+                </div>
+
+                <div class="relative">
+                    <label for="pinDesc" class="block text-xs font-bold text-gray-600 uppercase mb-1">Accessibility Notes</label>
+                    <textarea id="pinDesc" rows="2" placeholder="Is there a step? Automatic door? Ramp available?"
+                        class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-slate-500 focus:border-slate-500 block p-2.5 outline-none transition-all focus:bg-white resize-none"></textarea>
+                </div>
+
+                <!-- Accessibility Toggle -->
+                <fieldset>
+                    <legend class="block text-xs font-bold text-gray-600 uppercase mb-2">Entry Status</legend>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="accessibility" value="accessible" checked class="peer sr-only" onchange="updatePreviewColor('accessible')">
+                            <div id="radioAccessible" class="flex flex-col items-center justify-center gap-1 p-3 bg-gray-50 border-2 border-transparent rounded-lg peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-green-500 peer-checked:bg-green-50 peer-checked:border-green-600 peer-checked:text-green-800 transition-all hover:bg-gray-100 text-gray-500">
+                                <i class="ph-fill ph-check-circle text-2xl" aria-hidden="true"></i>
+                                <span class="text-xs font-bold uppercase">Accessible</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="accessibility" value="inaccessible" class="peer sr-only" onchange="updatePreviewColor('inaccessible')">
+                            <div id="radioInaccessible" class="flex flex-col items-center justify-center gap-1 p-3 bg-gray-50 border-2 border-transparent rounded-lg peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-red-500 peer-checked:bg-red-50 peer-checked:border-red-600 peer-checked:text-red-800 transition-all hover:bg-gray-100 text-gray-500">
+                                <i class="ph-fill ph-prohibit text-2xl" aria-hidden="true"></i>
+                                <span class="text-xs font-bold uppercase">Needs Ramp</span>
+                            </div>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <input type="hidden" id="pinLat">
+                <input type="hidden" id="pinLng">
+
+                <!-- Simple Preview -->
+                <div class="flex justify-center items-center gap-2 py-2 text-slate-500 text-xs" aria-hidden="true">
+                     <span>Map Icon Preview:</span>
+                     <i id="iconPreview" class="ph-fill ph-map-pin text-3xl text-green-600 transition-colors duration-300"></i>
+                </div>
+
+                <div class="pt-2 flex gap-3">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 text-sm font-bold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all transform hover:-translate-y-0.5">
+                        Add to Map
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-xs animate-fade-in p-5 text-center focus:outline-none" tabindex="-1">
+            <div class="mx-auto bg-red-100 w-12 h-12 rounded-full flex items-center justify-center mb-4" aria-hidden="true">
+                <i class="ph-fill ph-trash text-2xl text-red-600"></i>
+            </div>
+            <h3 id="deleteTitle" class="text-lg font-bold text-gray-800 mb-1">Remove Location?</h3>
+            <p class="text-sm text-gray-600 mb-5">This will permanently remove this accessibility data.</p>
+            <div class="flex gap-2">
+                <button onclick="closeDeleteModal()" class="flex-1 px-3 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                <button onclick="confirmDelete()" class="flex-1 px-3 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" role="status" aria-live="polite" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-xl z-[2000] text-sm font-medium opacity-0 pointer-events-none transition-opacity duration-300 flex items-center gap-2">
+        <i class="ph-fill ph-check-circle text-green-400 text-lg" aria-hidden="true"></i>
+        <span id="toastMsg">Location added!</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Gemini API Key - Replace with your key
+        const apiKey = "";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDSPuMQB2wUi61Cpu3LUkFkLi2J5H7ghAQ",
+            authDomain: "stop-c765a.firebaseapp.com",
+            projectId: "stop-c765a",
+            storageBucket: "stop-c765a.firebasestorage.app",
+            messagingSenderId: "1072607234612",
+            appId: "1:1072607234612:web:888077d556642dc88ed861",
+            measurementId: "G-QWHTHCCM1R"
+        };
+        const appId = 'my-pin-map';
+
+        let db, auth, currentUser;
+        let map, markers = {}, tempMarker = null, pinToDelete = null, lastFocusedElement = null;
+        let recognition = null; // Global recognition instance
+        let isListening = false;
+        let toastTimeout; // Timer for toast
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            initAuth();
+        } catch (e) {
+            console.error("Firebase init error:", e);
+            document.getElementById('statusText').innerText = "Config Error";
+            document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-red-500";
+        }
+
+        document.addEventListener('DOMContentLoaded', () => { initMap(); });
+
+        async function initAuth() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    updateStatus("Live", "bg-green-500");
+                    subscribeToPins();
+                } else { currentUser = null; }
+            });
+            try { await signInAnonymously(auth); }
+            catch (error) { console.error("Auth init failed:", error); updateStatus("Auth Error", "bg-red-500"); }
+        }
+
+        function updateStatus(text, colorClass) {
+            document.getElementById('statusText').innerText = text;
+            const dot = document.getElementById('statusDot');
+            dot.className = `w-2 h-2 rounded-full ${colorClass}`;
+            if (text === "Live") dot.classList.add("animate-pulse");
+        }
+
+        function subscribeToPins() {
+            if (!currentUser) return;
+            const pinsCollection = collection(db, 'pins');
+            onSnapshot(pinsCollection, (snapshot) => {
+                const currentIds = [];
+                snapshot.forEach((doc) => {
+                    const pinData = { id: doc.id, ...doc.data() };
+                    currentIds.push(pinData.id);
+                    if (markers[pinData.id]) updateMarkerPopup(pinData);
+                    else addPinToMap(pinData);
+                });
+                Object.keys(markers).forEach(id => {
+                    if (!currentIds.includes(id)) { map.removeLayer(markers[id]); delete markers[id]; }
+                });
+            }, (error) => { console.error("Data sync error:", error); showToast("Connection lost. Retrying..."); });
+        }
+
+        function initMap() {
+            const DEFAULT_VIEW = [43.6532, -79.3832];
+            const GTA_BOUNDS = L.latLngBounds([43.10, -80.10], [44.30, -78.50]);
+            const googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'], attribution: '&copy; Google' });
+            const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'], attribution: '&copy; Google' });
+
+            map = L.map('map', {
+                zoomControl: false,
+                layers: [googleStreets],
+                maxBounds: GTA_BOUNDS,
+                maxBoundsViscosity: 1.0,
+                minZoom: 9
+            }).setView(DEFAULT_VIEW, 13);
+
+            L.control.layers({ "Map": googleStreets, "Satellite": googleHybrid }, null, { position: 'topright' }).addTo(map);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            map.on('click', onMapClick);
+        }
+
+        function onMapClick(e) {
+            if (tempMarker) map.removeLayer(tempMarker);
+            const tempIcon = L.divIcon({ className: 'custom-pin', html: `<i class="ph-fill ph-map-pin text-4xl text-slate-400 animate-bounce"></i>`, iconSize: [32, 32], iconAnchor: [16, 32] });
+            tempMarker = L.marker([e.latlng.lat, e.latlng.lng], { icon: tempIcon }).addTo(map);
+            openModal(e.latlng.lat, e.latlng.lng);
+        }
+
+        function addPinToMap(pin) {
+            const colorClass = pin.accessibility === 'accessible' ? 'text-green-600' : 'text-red-600';
+            const customIcon = L.divIcon({ className: 'custom-pin', html: `<i class="ph-fill ph-map-pin text-4xl ${colorClass} pin-marker"></i>`, iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32] });
+            const marker = L.marker([pin.lat, pin.lng], { icon: customIcon }).addTo(map);
+            marker.bindPopup(createPopupContent(pin));
+            markers[pin.id] = marker;
+        }
+
+        function updateMarkerPopup(pin) {
+            const marker = markers[pin.id];
+            if (marker) marker.setPopupContent(createPopupContent(pin));
+        }
+
+        function createPopupContent(pin) {
+            const upvotes = pin.upvotes || 0;
+            const downvotes = pin.downvotes || 0;
+            const isCreator = currentUser && pin.creatorId === currentUser.uid;
+            const isAccessible = pin.accessibility === 'accessible';
+            const colorClass = isAccessible ? 'text-green-700' : 'text-red-700';
+            const statusText = isAccessible ? 'Accessible' : 'Needs Ramp';
+            const statusIcon = isAccessible ? 'ph-check-circle' : 'ph-warning';
+            const myVoteKey = `vote_${pin.id}`;
+            const myVote = localStorage.getItem(myVoteKey);
+            const upClass = myVote === 'up' ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-white text-slate-700 hover:bg-green-50 hover:text-green-800 border border-transparent shadow-sm';
+            const downClass = myVote === 'down' ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-white text-slate-700 hover:bg-red-50 hover:text-red-800 border border-transparent shadow-sm';
+
+            return `
+                <div class="font-sans text-slate-700 select-none">
+                    <div class="bg-slate-50 p-3 border-b border-gray-200 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                             <i class="ph-fill ph-map-pin ${colorClass} text-lg"></i>
+                             <h3 class="font-bold text-md text-slate-900 leading-tight">${escapeHtml(pin.name)}</h3>
+                        </div>
+                    </div>
+                    <div class="px-3 pt-2 pb-1">
+                        <div class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider mb-2 ${colorClass}">
+                            <i class="ph-fill ${statusIcon}"></i> ${statusText}
+                        </div>
+                        <p class="text-sm text-gray-700 mb-4 leading-relaxed">${escapeHtml(pin.desc) || "No description."}</p>
+                        <div class="flex items-center justify-between bg-slate-100 rounded-lg p-1.5 mb-3">
+                            <div class="flex gap-1">
+                                <button onclick="window.handleVote('${pin.id}', 'up')" class="flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-bold ${upClass}" title="Helpful"><i class="ph-bold ph-thumbs-up"></i> ${upvotes}</button>
+                                <button onclick="window.handleVote('${pin.id}', 'down')" class="flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-bold ${downClass}" title="Not Helpful"><i class="ph-bold ph-thumbs-down"></i> ${downvotes}</button>
+                            </div>
+                            ${isCreator ? `<button onclick="window.initDelete('${pin.id}')" class="text-xs text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors" title="Delete"><i class="ph-bold ph-trash text-lg"></i></button>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Voice AI Logic ---
+        let silenceTimer; // Timer to track pauses
+
+        window.toggleVoiceFill = function() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Voice input is not supported in this browser.");
+                return;
+            }
+
+            const btnText = document.getElementById('voiceBtnText');
+            const iconWrapper = document.getElementById('voiceIconWrapper');
+            const btn = document.getElementById('voiceBtn');
+
+            // --- STOP Logic (Toggle Off) ---
+            if (isListening) {
+                if (recognition) recognition.stop();
+                if (silenceTimer) clearTimeout(silenceTimer); // Clear any pending processing
+                isListening = false;
+                // Immediate UI reset for responsiveness
+                btnText.innerText = "Tap to Describe with Voice";
+                btn.classList.add('text-blue-700');
+                btn.classList.remove('text-red-600', 'animate-pulse');
+                iconWrapper.classList.remove('bg-red-100', 'animate-pulse-ring');
+                iconWrapper.classList.add('bg-blue-200');
+                return;
+            }
+
+            // --- START Logic ---
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+
+            recognition.lang = 'en-US';
+            recognition.interimResults = true;
+            recognition.continuous = true; // CHANGED: Keep listening even if user pauses
+            recognition.maxAlternatives = 1;
+
+            // UI State: Listening
+            isListening = true;
+            btnText.innerText = "Listening... (Press again or Stop talking to Stop)";
+            btn.classList.remove('text-blue-700');
+            btn.classList.add('text-red-600', 'animate-pulse');
+            iconWrapper.classList.add('bg-red-100', 'animate-pulse-ring');
+            iconWrapper.classList.remove('bg-blue-200');
+
+            recognition.start();
+
+            recognition.onresult = async (event) => {
+                // Clear the timer every time we hear a sound
+                if (silenceTimer) clearTimeout(silenceTimer);
+
+                let fullTranscript = "";
+
+                // In continuous mode, we rebuild the full transcript from the results array
+                for (let i = 0; i < event.results.length; ++i) {
+                    fullTranscript += event.results[i][0].transcript;
+                }
+
+                // Show visual feedback immediately
+                if (fullTranscript) {
+                    // Truncate for display if too long
+                    const display = fullTranscript.length > 30 ? "..." + fullTranscript.slice(-30) : fullTranscript;
+                    btnText.innerText = `"${display}..."`;
+                }
+
+                // Set a custom "Silence Timeout"
+                // Only process if we haven't heard anything new for 3 seconds
+                silenceTimer = setTimeout(async () => {
+                    recognition.stop();
+                    isListening = false;
+                    btnText.innerText = "Processing...";
+                    await processWithGemini(fullTranscript);
+                    resetVoiceUI();
+                }, 3000); // 3000ms = 3 seconds wait time
+            };
+
+            recognition.onerror = (event) => {
+                if (!isListening) return;
+                if (silenceTimer) clearTimeout(silenceTimer);
+
+                console.warn("Voice input error:", event.error);
+                let msg = "Voice error. Try typing.";
+
+                if (event.error === 'no-speech') {
+                    // Ignore no-speech in continuous mode usually, but if it happens:
+                    msg = "Didn't hear anything. Try closer.";
+                } else if (event.error === 'audio-capture') {
+                    msg = "No microphone found.";
+                } else if (event.error === 'not-allowed') {
+                    msg = "Microphone blocked.";
+                }
+
+                showToast(msg);
+                resetVoiceUI();
+            };
+
+            recognition.onend = () => {
+                // Only reset if we aren't currently processing a result
+                if (isListening && !btnText.innerText.includes("Processing")) {
+                    resetVoiceUI();
+                }
+                isListening = false;
+            };
+        };
+
+        function resetVoiceUI() {
+            const btn = document.getElementById('voiceBtn');
+            const iconWrapper = document.getElementById('voiceIconWrapper');
+            const btnText = document.getElementById('voiceBtnText');
+
+            if (silenceTimer) clearTimeout(silenceTimer);
+
+            btnText.innerText = "Tap to Describe with Voice";
+            btn.classList.add('text-blue-700');
+            btn.classList.remove('text-red-600', 'animate-pulse');
+            iconWrapper.classList.remove('bg-red-100', 'animate-pulse-ring');
+            iconWrapper.classList.add('bg-blue-200');
+            isListening = false;
+        }
+
+        async function processWithGemini(transcript) {
+            try {
+                const systemPrompt = `
+                    You are a data extractor. Extract 3 fields from the user's spoken description of a location:
+                    1. "name": The business name (Capitalized).
+                    2. "desc": A short description of the accessibility features/barriers.
+                    3. "accessibility": Either "accessible" (if they mention ramps, auto doors, no steps) or "inaccessible" (if they mention steps, stairs, heavy doors).
+                    4. Sometimes the transcript will not be 100% accurate, such as getting similar sounding words mixed up, in those situations try your best to guess their intent.
+                    Return ONLY valid JSON.
+                `;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Description: "${transcript}"` }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!response.ok) throw new Error('AI Request failed');
+
+                const data = await response.json();
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+
+                // Populate Fields
+                document.getElementById('pinName').value = result.name || "";
+                document.getElementById('pinDesc').value = result.desc || "";
+
+                // Set Radio Button
+                const radioValue = result.accessibility === 'accessible' ? 'accessible' : 'inaccessible';
+                document.querySelector(`input[name="accessibility"][value="${radioValue}"]`).checked = true;
+                window.updatePreviewColor(radioValue);
+
+                showToast("Auto-filled from voice!");
+
+            } catch (error) {
+                console.error("AI processing error:", error);
+                document.getElementById('pinDesc').value = transcript; // Fallback: just put text in description
+                showToast("Couldn't process structure, but text added.");
+            }
+        }
+
+        // --- Standard Handlers ---
+        window.handleVote = async function(pinId, type) {
+            if (!currentUser) return showToast("Offline mode");
+            const storageKey = `vote_${pinId}`;
+            const previousVote = localStorage.getItem(storageKey);
+            const pinRef = doc(db, 'pins', pinId);
+            try {
+                if (previousVote === type) {
+                    const update = type === 'up' ? { upvotes: increment(-1) } : { downvotes: increment(-1) };
+                    await updateDoc(pinRef, update); localStorage.removeItem(storageKey); showToast("Vote removed");
+                } else if (previousVote && previousVote !== type) {
+                    const update = {};
+                    if (previousVote === 'up') update.upvotes = increment(-1); else update.downvotes = increment(-1);
+                    if (type === 'up') update.upvotes = increment(1); else update.downvotes = increment(1);
+                    await updateDoc(pinRef, update); localStorage.setItem(storageKey, type); showToast("Changed vote");
+                } else {
+                    const update = type === 'up' ? { upvotes: increment(1) } : { downvotes: increment(1) };
+                    await updateDoc(pinRef, update); localStorage.setItem(storageKey, type); showToast("Voted!");
+                }
+            } catch (err) { console.error("Vote failed:", err); }
+        };
+
+        window.initDelete = function(id) { if (!currentUser) return; pinToDelete = id; openModalById('deleteModal'); };
+        window.closeDeleteModal = function() { pinToDelete = null; closeModalById('deleteModal'); };
+        window.confirmDelete = async function() {
+            if (!currentUser || !pinToDelete) return;
+            const btn = document.querySelector('#deleteModal button.bg-red-600');
+            const originalText = btn.innerText;
+            btn.innerText = "Deleting..."; btn.disabled = true;
+            try { await deleteDoc(doc(db, 'pins', pinToDelete)); showToast("Location removed"); closeDeleteModal(); }
+            catch (err) { console.error("Delete failed:", err); showToast("Could not delete"); } finally { btn.innerText = originalText; btn.disabled = false; }
+        };
+
+        window.handlePinSubmit = async function(e) {
+            e.preventDefault();
+            if (!currentUser) { showToast("Wait for connection..."); return; }
+            const name = document.getElementById('pinName').value;
+            const desc = document.getElementById('pinDesc').value;
+            const lat = parseFloat(document.getElementById('pinLat').value);
+            const lng = parseFloat(document.getElementById('pinLng').value);
+            const accessibility = document.querySelector('input[name="accessibility"]:checked').value;
+            if (!name) return;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText; submitBtn.innerText = "Adding..."; submitBtn.disabled = true;
+            try {
+                await addDoc(collection(db, 'pins'), { name, desc, lat, lng, accessibility, upvotes: 0, downvotes: 0, creatorId: currentUser.uid, createdAt: new Date().toISOString() });
+                if (tempMarker) map.removeLayer(tempMarker); closeModal(); showToast("Location added!"); document.getElementById('pinForm').reset();
+            } catch (err) { console.error("Error adding pin:", err); showToast("Error adding location"); } finally { submitBtn.innerText = originalText; submitBtn.disabled = false; }
+        };
+
+        // --- Utils & Focus Management ---
+        function trapFocus(modal) {
+            const focusableElements = modal.querySelectorAll('a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]');
+            const first = focusableElements[0]; const last = focusableElements[focusableElements.length - 1];
+            modal.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+                    else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+                }
+                if (e.key === 'Escape') closeModalById(modal.id);
+            });
+        }
+        function openModalById(modalId) { lastFocusedElement = document.activeElement; const modal = document.getElementById(modalId); modal.classList.remove('hidden'); modal.focus(); trapFocus(modal); }
+        function closeModalById(modalId) { const modal = document.getElementById(modalId); modal.classList.add('hidden'); if (lastFocusedElement) lastFocusedElement.focus(); }
+
+        window.openModal = function(lat, lng) { document.getElementById('pinLat').value = lat; document.getElementById('pinLng').value = lng; window.updatePreviewColor('accessible'); document.querySelector('input[value="accessible"]').checked = true; openModalById('pinModal'); };
+        window.closeModal = function() { closeModalById('pinModal'); if (tempMarker) map.removeLayer(tempMarker); };
+        window.openAboutModal = () => openModalById('aboutModal'); window.closeAboutModal = () => closeModalById('aboutModal');
+        window.openHelpModal = () => openModalById('helpModal'); window.closeHelpModal = () => closeModalById('helpModal');
+        window.updatePreviewColor = function(status) { const preview = document.getElementById('iconPreview'); if (status === 'accessible') preview.className = "ph-fill ph-map-pin text-3xl text-green-600 transition-colors duration-300"; else preview.className = "ph-fill ph-map-pin text-3xl text-red-600 transition-colors duration-300"; };
+
+        // Improved Toast Handler with Clear Timeout
+        window.showToast = function(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = message;
+
+            // Immediately show
+            toast.classList.remove('opacity-0');
+
+            // Clear any existing timeout so messages don't disappear too fast if spamming
+            if (toastTimeout) clearTimeout(toastTimeout);
+
+            // Set new timeout
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 3000);
+        };
+
+        function escapeHtml(text) { if (!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+    </script>
+</body>
+</html>

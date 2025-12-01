@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PinDrop - Custom Map</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Phosphor Icons (for nice map pins) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        /* Custom Styles for Map and UI */
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 0;
+        }
+
+        /* Custom Popup Styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 0.5rem;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .leaflet-popup-content {
+            margin: 0;
+            width: 200px !important;
+        }
+        .leaflet-popup-tip {
+            background: white;
+        }
+
+        /* Custom Marker Icon Style */
+        .custom-pin {
+            background: none;
+            border: none;
+        }
+        .pin-marker {
+            filter: drop-shadow(0 4px 3px rgb(0 0 0 / 0.3));
+            transition: transform 0.2s;
+        }
+        .pin-marker:hover {
+            transform: scale(1.1) translateY(-5px);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        /* Layer Control Styling Override */
+        .leaflet-control-layers {
+            border: none !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+            border-radius: 0.5rem !important;
+            font-family: ui-sans-serif, system-ui, sans-serif !important;
+            font-size: 0.875rem !important;
+            padding: 4px !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-slate-800">
+
+    <!-- Top Navigation Bar -->
+    <div class="absolute top-0 left-0 right-0 z-[1000] bg-white/90 backdrop-blur-md shadow-md px-4 py-3 flex justify-between items-center border-b border-gray-200">
+        <div class="flex items-center gap-2">
+            <i class="ph-fill ph-map-pin text-rose-500 text-2xl"></i>
+            <h1 class="font-bold text-lg text-slate-800 tracking-tight">PinDrop</h1>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="clearAllPins()" class="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-full transition-colors">
+                Reset Map
+            </button>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Add Pin Modal (Hidden by default) -->
+    <div id="pinModal" class="hidden absolute inset-0 z-[2000] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-fade-in overflow-hidden">
+            <div class="bg-rose-500 p-4 text-white flex justify-between items-center">
+                <h2 class="font-bold text-lg"><i class="ph ph-plus-circle mr-1"></i> New Location</h2>
+                <button onclick="closeModal()" class="hover:bg-white/20 rounded-full p-1 transition-colors">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <form id="pinForm" onsubmit="handlePinSubmit(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Location Name</label>
+                    <input type="text" id="pinName" required placeholder="e.g. Best Coffee Spot"
+                        class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-rose-500 focus:border-rose-500 block p-2.5 outline-none transition-all focus:bg-white">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Description / Note</label>
+                    <textarea id="pinDesc" rows="3" placeholder="What's special about this place?"
+                        class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-rose-500 focus:border-rose-500 block p-2.5 outline-none transition-all focus:bg-white resize-none"></textarea>
+                </div>
+
+                <!-- Hidden inputs for coordinates -->
+                <input type="hidden" id="pinLat">
+                <input type="hidden" id="pinLng">
+
+                <div class="pt-2 flex gap-3">
+                    <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-rose-500 rounded-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-400 shadow-lg shadow-rose-500/30 transition-colors">
+                        Drop Pin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-xl z-[2000] text-sm font-medium opacity-0 pointer-events-none transition-opacity duration-300 flex items-center gap-2">
+        <i class="ph-fill ph-check-circle text-green-400 text-lg"></i>
+        <span id="toastMsg">Pin added!</span>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // --- Configuration & State ---
+        // Default start: London, UK (or generally nice zoom level)
+        const DEFAULT_VIEW = [51.505, -0.09];
+        const DEFAULT_ZOOM = 13;
+
+        let map;
+        let pins = [];
+        let tempMarker = null; // Shows where user clicked before saving
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadPins();
+        });
+
+        function initMap() {
+            // 1. Define Base Layers
+
+            // Street View (CartoDB Voyager)
+            const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 20
+            });
+
+            // Satellite View (Esri World Imagery)
+            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                maxZoom: 19 // Sometimes limited compared to vector maps
+            });
+
+            // 2. Initialize Leaflet Map
+            map = L.map('map', {
+                zoomControl: false, // We'll move zoom control
+                layers: [streetLayer] // Default layer
+            }).setView(DEFAULT_VIEW, DEFAULT_ZOOM);
+
+            // 3. Add Layer Control
+            const baseMaps = {
+                "Street Map": streetLayer,
+                "Satellite": satelliteLayer
+            };
+
+            L.control.layers(baseMaps, null, {
+                position: 'topright'
+            }).addTo(map);
+
+            // 4. Move Zoom control to bottom right
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(map);
+
+            // Event: Map Click
+            map.on('click', onMapClick);
+        }
+
+        // --- Core Logic ---
+
+        // 1. Handle Map Click
+        function onMapClick(e) {
+            // Remove previous temp marker if exists
+            if (tempMarker) map.removeLayer(tempMarker);
+
+            const { lat, lng } = e.latlng;
+
+            // Add a temporary visual indicator
+            const tempIcon = L.divIcon({
+                className: 'custom-pin',
+                html: `<i class="ph-fill ph-map-pin text-4xl text-rose-300 animate-bounce"></i>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32]
+            });
+            tempMarker = L.marker([lat, lng], { icon: tempIcon }).addTo(map);
+
+            // Open Modal
+            openModal(lat, lng);
+        }
+
+        // 2. Add Pin to Map
+        function addPinToMap(pin) {
+            // Custom Icon using FontAwesome/Phosphor
+            const customIcon = L.divIcon({
+                className: 'custom-pin',
+                html: `<i class="ph-fill ph-map-pin text-4xl text-rose-500 pin-marker"></i>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+
+            const marker = L.marker([pin.lat, pin.lng], { icon: customIcon }).addTo(map);
+
+            // Create Popup Content
+            const popupContent = `
+                <div class="font-sans text-slate-700">
+                    <div class="bg-slate-50 p-3 border-b border-gray-100">
+                        <h3 class="font-bold text-md text-slate-800">${escapeHtml(pin.name)}</h3>
+                    </div>
+                    <div class="p-3">
+                        <p class="text-sm text-gray-600 mb-3 leading-relaxed">${escapeHtml(pin.desc) || "No description."}</p>
+                        <button onclick="deletePin('${pin.id}')" class="text-xs w-full py-1.5 rounded bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors flex items-center justify-center gap-1">
+                            <i class="ph ph-trash"></i> Delete Pin
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            marker.bindPopup(popupContent);
+
+            // Store marker reference in pin object (not for saving, but for runtime removal)
+            pin.markerRef = marker;
+        }
+
+        // 3. Save Pin
+        function handlePinSubmit(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('pinName').value;
+            const desc = document.getElementById('pinDesc').value;
+            const lat = parseFloat(document.getElementById('pinLat').value);
+            const lng = parseFloat(document.getElementById('pinLng').value);
+
+            if (!name) return;
+
+            const newPin = {
+                id: Date.now().toString(), // Simple unique ID
+                name,
+                desc,
+                lat,
+                lng
+            };
+
+            // Add to State
+            pins.push(newPin);
+
+            // Add to Map
+            addPinToMap(newPin);
+
+            // Save to Storage
+            savePinsToStorage();
+
+            // Cleanup
+            if (tempMarker) map.removeLayer(tempMarker);
+            closeModal();
+            showToast(`Dropped "${name}"`);
+
+            // Reset Form
+            document.getElementById('pinForm').reset();
+        }
+
+        // 4. Delete Pin
+        window.deletePin = function(id) {
+            const pinIndex = pins.findIndex(p => p.id === id);
+            if (pinIndex > -1) {
+                const pin = pins[pinIndex];
+
+                // Remove from map
+                if (pin.markerRef) {
+                    map.removeLayer(pin.markerRef);
+                }
+
+                // Remove from array
+                pins.splice(pinIndex, 1);
+
+                // Save
+                savePinsToStorage();
+            }
+        }
+
+        // 5. Clear All
+        window.clearAllPins = function() {
+            if(confirm("Are you sure you want to remove all pins?")) {
+                pins.forEach(pin => {
+                    if (pin.markerRef) map.removeLayer(pin.markerRef);
+                });
+                pins = [];
+                savePinsToStorage();
+                showToast("Map reset");
+            }
+        }
+
+        // --- Storage Utilities ---
+        function savePinsToStorage() {
+            // Remove markerRef before saving to JSON (circular reference)
+            const dataToSave = pins.map(({ markerRef, ...rest }) => rest);
+            localStorage.setItem('myMapPins', JSON.stringify(dataToSave));
+        }
+
+        function loadPins() {
+            const saved = localStorage.getItem('myMapPins');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                parsed.forEach(p => {
+                    pins.push(p);
+                    addPinToMap(p);
+                });
+            }
+        }
+
+        // --- UI Utilities ---
+        function openModal(lat, lng) {
+            document.getElementById('pinLat').value = lat;
+            document.getElementById('pinLng').value = lng;
+            document.getElementById('pinModal').classList.remove('hidden');
+            // Auto focus name input
+            setTimeout(() => document.getElementById('pinName').focus(), 100);
+        }
+
+        window.closeModal = function() {
+            document.getElementById('pinModal').classList.add('hidden');
+            if (tempMarker) map.removeLayer(tempMarker);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = message;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        // Security: Prevent XSS in popups
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") closeModal();
+        });
+    </script>
+</body>
+</html>
