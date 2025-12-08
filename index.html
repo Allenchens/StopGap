@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AccessMap - Supported by StopGap</title>
+    <title>AccessMap - Inspired by StopGap</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,10 +53,75 @@
         .leaflet-control-layers {
             border: none !important;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
-            border-radius: 0.5rem !important;
+            border-radius: 0.75rem !important;
             font-family: ui-sans-serif, system-ui, sans-serif !important;
             padding: 4px !important;
+            overflow: visible !important;
+            min-width: unset !important; /* Let it shrink when collapsed */
         }
+
+        /* TRANSFORM THE TOGGLE INTO A BUTTON WITH TEXT INSIDE */
+        .leaflet-control-layers-toggle {
+            width: auto !important; /* Allow growing */
+            height: 40px !important;
+            background-size: 20px !important;
+            background-position: 10px center !important; /* Icon on left */
+            padding-left: 38px !important; /* Space for icon */
+            padding-right: 12px !important; /* Space on right */
+            background-color: white !important;
+            border-radius: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+            border: 2px solid rgba(0,0,0,0.1) !important;
+        }
+
+        /* The "Map Style" Text */
+        .leaflet-control-layers-toggle::after {
+            content: "Map Style";
+            position: static !important; /* Inside the box flow */
+            transform: none !important;
+            background: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            color: #334155 !important;
+        }
+
+        /* Style the options inside the layer control when open */
+        .leaflet-control-layers-expanded {
+            padding: 12px !important;
+            min-width: 150px !important;
+        }
+
+        .leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+            display: none !important; /* Hide the toggle button when list is open */
+        }
+
+        .leaflet-control-layers label {
+            display: flex !important;
+            align-items: center !important;
+            margin-bottom: 8px !important;
+            cursor: pointer !important;
+            padding: 4px 0;
+        }
+
+        .leaflet-control-layers label:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        /* Make the radio buttons bigger and red */
+        .leaflet-control-layers-selector {
+            transform: scale(1.3);
+            margin-right: 10px !important;
+            margin-top: 0 !important; /* Fix vertical alignment */
+            accent-color: #dc2626; /* StopGap Red */
+            cursor: pointer !important;
+        }
+
         .leaflet-top.leaflet-right { margin-top: 70px; }
 
         /* Focus outline for accessibility */
@@ -64,6 +129,13 @@
             outline: 2px solid #2563eb;
             outline-offset: 2px;
         }
+
+        /* Custom scrollbar for modal */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-slate-800">
@@ -71,9 +143,8 @@
     <!-- Top Navigation Bar -->
     <header class="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-md shadow-md px-4 py-3 flex justify-between items-center border-b border-gray-200">
         <div class="flex items-center gap-3">
-            <div class="bg-red-600 text-white p-1.5 rounded-md shadow-sm" aria-hidden="true">
-                <i class="ph-bold ph-wheelchair text-xl"></i>
-            </div>
+            <!-- Branding Icon -->
+            <img src="https://accessibleicon.org/img/accessible-icon.jpg" alt="AccessMap Logo" class="h-10 w-10 rounded-md shadow-sm object-cover" aria-hidden="true">
             <div>
                 <h1 class="font-bold text-lg text-slate-900 tracking-tight leading-none">AccessMap</h1>
                 <p class="text-[10px] text-slate-500 font-bold tracking-wide uppercase">Community Accessibility Project</p>
@@ -81,20 +152,16 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <div id="connectionStatus" role="status" aria-live="polite" class="hidden md:flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                <div class="w-2 h-2 rounded-full bg-orange-400 animate-pulse" id="statusDot" aria-hidden="true"></div>
-                <span class="text-xs font-semibold text-slate-600" id="statusText">Connecting...</span>
-            </div>
-
+            <!-- How to Use Button -->
             <button id="helpBtn" onclick="openHelpModal()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1">
                 <i class="ph-bold ph-hand-heart" aria-hidden="true"></i>
-                <span class="hidden sm:inline">How to Help</span>
+                <span class="hidden sm:inline">How to Use</span>
                 <span class="sr-only md:hidden">Help</span>
             </button>
 
             <button id="aboutBtn" onclick="openAboutModal()" class="bg-slate-900 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1">
                 <i class="ph-bold ph-info" aria-hidden="true"></i>
-                <span class="hidden sm:inline">About</span>
+                <span class="hidden sm:inline">Inspired by StopGap - Learn More</span>
                 <span class="sr-only md:hidden">About</span>
             </button>
         </div>
@@ -103,20 +170,37 @@
     <!-- Map Container -->
     <main id="map" aria-label="Interactive map of accessible locations in Toronto"></main>
 
-    <!-- Modal 1: How to Help -->
+    <!-- NEW: Beyond Ramps Banner/Button -->
+    <div class="absolute bottom-8 right-4 md:right-14 z-[1000] hidden md:block">
+        <button onclick="openBeyondModal()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full text-sm font-bold shadow-xl flex items-center gap-3 border-2 border-white transition-all transform hover:-translate-y-1 hover:scale-105">
+            <i class="ph-bold ph-megaphone text-yellow-300 text-2xl"></i>
+            <span class="drop-shadow-sm">Beyond ramps! We need to do more</span>
+        </button>
+    </div>
+    <!-- Mobile version (Icon only to save space) -->
+    <div class="absolute bottom-24 right-3 z-[1000] md:hidden">
+        <button onclick="openBeyondModal()" class="bg-red-600 hover:bg-red-700 text-white p-4 rounded-full shadow-xl border-2 border-white transition-transform hover:-translate-y-1" aria-label="Beyond ramps, read more">
+            <i class="ph-bold ph-megaphone text-yellow-300 text-2xl"></i>
+        </button>
+    </div>
+
+    <!-- Modal 1: How to Use / Help -->
     <div id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in overflow-hidden focus:outline-none" tabindex="-1">
             <div class="bg-red-600 p-5 text-white flex justify-between items-center">
                 <h2 id="helpTitle" class="font-bold text-xl flex items-center gap-2">
-                    <i class="ph-bold ph-hand-heart text-2xl"></i> How to Help
+                    <i class="ph-bold ph-hand-heart text-2xl"></i> How to Use
                 </h2>
                 <button onclick="closeHelpModal()" aria-label="Close help modal" class="hover:bg-white/20 rounded-full p-1 transition-colors">
                     <i class="ph-bold ph-x text-xl" aria-hidden="true"></i>
                 </button>
             </div>
             <div class="p-6">
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
-                    <p class="text-sm text-slate-700 font-medium">Contribute to the map by logging locations:</p>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+                    <p class="text-sm text-slate-700 leading-relaxed">
+                        <strong>Help your community navigate!</strong> By marking locations, you act as eyes and ears for neighbors who need access.
+                    </p>
+
                     <ul class="text-sm text-slate-600 space-y-3">
                         <li class="flex items-start gap-3">
                             <div class="bg-green-100 p-1.5 rounded-full text-green-600 mt-0.5"><i class="ph-fill ph-check-circle" aria-hidden="true"></i></div>
@@ -132,8 +216,31 @@
                                 Mark stores with a single step entry or other barriers preventing access.
                             </div>
                         </li>
+                        <li class="flex items-start gap-3">
+                            <div class="bg-blue-100 p-1.5 rounded-full text-blue-600 mt-0.5"><i class="ph-fill ph-thumbs-up" aria-hidden="true"></i></div>
+                            <div>
+                                <strong class="text-slate-800">Verify Accuracy</strong><br>
+                                Use <strong>Thumb Up</strong> to confirm info is correct, or <strong>Thumb Down</strong> if it's outdated or wrong.
+                            </div>
+                        </li>
                     </ul>
                 </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Take Further Action</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- CHANGED: Now opens the Beyond Ramps modal instead of external link -->
+                        <button onclick="closeHelpModal(); openBeyondModal()" class="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-center group w-full">
+                            <i class="ph-fill ph-megaphone text-2xl text-slate-400 group-hover:text-slate-600 mb-1"></i>
+                            <span class="text-xs font-bold text-slate-700">Advocate for Change</span>
+                        </button>
+                        <a href="https://stopgap.ca/donate/" target="_blank" class="flex flex-col items-center justify-center p-3 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors text-center group">
+                            <i class="ph-fill ph-heart text-2xl text-red-400 group-hover:text-red-600 mb-1"></i>
+                            <span class="text-xs font-bold text-red-700">Donate to StopGap</span>
+                        </a>
+                    </div>
+                </div>
+
                 <div class="mt-6 text-center">
                     <button onclick="closeHelpModal()" class="w-full px-4 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors">
                         Got it, I'm ready to map!
@@ -145,27 +252,134 @@
 
     <!-- Modal 2: About StopGap -->
     <div id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in overflow-hidden focus:outline-none" tabindex="-1">
-            <div class="bg-slate-900 p-6 text-white text-center">
-                <i class="ph-bold ph-ramp text-5xl mb-2 inline-block text-red-500" aria-hidden="true"></i>
-                <h2 id="aboutTitle" class="font-bold text-2xl">Bridging the Gap</h2>
-                <p class="text-slate-400 text-sm mt-1">Creating a world where every space is accessible.</p>
-            </div>
-            <div class="p-6 space-y-4">
-                <p class="text-slate-600 text-sm leading-relaxed">
-                    <strong>AccessMap</strong> is a community tool inspired by the <span class="font-bold text-slate-900">StopGap Foundation</span>.
-                </p>
-                <p class="text-slate-600 text-sm leading-relaxed">
-                    StopGap provides brightly colored ramps to single-step businesses, raising awareness about the importance of barrier-free spaces and ensuring everyone can access their community.
-                </p>
-                <div class="flex gap-3 pt-2">
-                    <button onclick="closeAboutModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">
-                        Close
-                    </button>
-                    <a href="https://stopgap.ca/" target="_blank" class="flex-1 text-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">
-                        Visit StopGap.ca <span class="sr-only">(opens in new tab)</span>
-                    </a>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fade-in overflow-hidden focus:outline-none flex flex-col max-h-[90vh]" tabindex="-1">
+            <div class="bg-slate-900 p-6 text-white text-center shrink-0 relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10 bg-[url('https://yt3.googleusercontent.com/ytc/AIdro_kA0PKl6ehUqajQzOllbm1p6yDOeNeWxN-u3CVVx2uGiA=s900-c-k-c0x00ffffff-no-rj')] bg-center bg-cover"></div>
+                <div class="relative z-10">
+                    <img src="https://yt3.googleusercontent.com/ytc/AIdro_kA0PKl6ehUqajQzOllbm1p6yDOeNeWxN-u3CVVx2uGiA=s900-c-k-c0x00ffffff-no-rj" alt="StopGap Foundation Logo" class="h-16 w-16 mx-auto rounded-full border-4 border-white/20 mb-3 shadow-lg">
+                    <h2 id="aboutTitle" class="font-bold text-2xl">Why We Love StopGap</h2>
+                    <p class="text-slate-400 text-sm mt-1">Inspired by the movement to build a barrier-free world.</p>
                 </div>
+            </div>
+            <div class="p-6 space-y-6 overflow-y-auto custom-scroll text-slate-700 leading-relaxed text-sm">
+                <section>
+                    <h3 class="text-red-600 font-bold text-lg mb-2">The Problem with One Step</h3>
+                    <p>Think about your favorite local place—that corner café or bookstore you visit all the time. Now imagine walking up to the door and hitting a block. It’s not a big metal gate; it’s just a single, small step.</p>
+                    <p class="mt-2">For most people, that step is totally fine. But for thousands of people in Canada using a wheelchair, a stroller, or a walker, that few inches of concrete is a complete barrier. It’s a message that says: <strong>You aren’t supposed to be here.</strong></p>
+                    <p class="mt-2">The <strong>StopGap Foundation</strong> is an organization that refuses to let that message stick. They are taking simple barriers and transforming them into bright, loud, and temporary solutions. Through these colorful, community-built ramps, StopGap is pushing us to look closer at exclusion and imagine a world where everyone can easily get inside.</p>
+                </section>
+                <img src="https://stopgap.ca/wp-content/uploads/2017/04/DSC_5518.jpg" alt="StopGap team building ramps" class="w-full h-48 object-cover rounded-xl shadow-md">
+                <section>
+                    <h3 class="text-red-600 font-bold text-lg mb-2">What is StopGap?</h3>
+                    <p>Founded in Toronto by <strong>Luke Anderson</strong>, the StopGap Foundation is a grassroots movement that builds custom wooden ramps for single-step storefronts. You’ve probably seen them—they are usually painted in bright reds, blues, greens, and yellows that are impossible to miss.</p>
+                    <p class="mt-2">But here’s the cool part: the ramps aren’t meant to be permanent fixes. StopGap is clear that the wooden ramps are only a temporary fix. The main goal is to spark conversations, pushing business owners, neighbors, and local leaders to ask why our world is built with these barriers in the first place.</p>
+                    <p class="mt-2">StopGap volunteers team up with local businesses and schools to identify barriers and build these ramps together. Their Community Ramp Projects prove that accessibility isn't just a building code issue; it’s a community love language. When we build for access, we build a better space for everyone.</p>
+                </section>
+                <img src="https://scontent-yyz1-1.xx.fbcdn.net/v/t39.30808-6/489750546_1256864189300794_8467632592837100004_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=7S_P-SssD1sQ7kNvwE4bzfA&_nc_oc=Adk_JzBr6pLDzn35USsWIbfda-6S60CdbkNaeMUbFHngeFSaOEUYeZDuC6HvDRyB_dk&_nc_zt=23&_nc_ht=scontent-yyz1-1.xx&_nc_gid=xdrUrEMP1_Ee6xIRxx365A&oh=00_AflQjnO1mVvoAUYZTrBbUgQV32yMoT_zyXczxTlb2QRdrA&oe=693CFAB0" alt="A bright red StopGap ramp on a city street" class="w-full h-48 object-cover rounded-xl shadow-md grayscale hover:grayscale-0 transition-all duration-500">
+                <section>
+                    <h3 class="text-red-600 font-bold text-lg mb-2">Why This Matters</h3>
+                    <p class="mb-3">You might be thinking, "It's just a ramp, right?" Actually, it connects to some huge ideas about justice and power.</p>
+                    <ul class="space-y-4 list-decimal pl-4">
+                        <li><strong>Buildings Tell Us Who's Welcome:</strong> In many ways, the architecture all around us is an argument. When a bank or a café is designed with stairs but no ramp, the building is silently arguing that certain bodies are less important or less welcome. Disability justice advocates point out that our physical spaces communicate who belongs. StopGap's ramps are a public counter-argument. They disrupt that exclusion and use design to teach inclusion, proving that we can choose to build for everyone.</li>
+                        <li><strong>Resisting Exclusion:</strong> The issue of access goes beyond just ramps; it’s about ensuring that people aren't pushed out—or dis-located—from public life. When disabled people can't enter shared community spaces, it reinforces a harmful separation. StopGap resists this by ensuring disabled people are visible and present in the daily life of the neighborhood. Their work fights against the systems that keep marginalized people—especially those facing ableism layered with racism—out of sight and out of mind.</li>
+                        <li><strong>Small Acts, Big Change:</strong> Change doesn't always start with massive laws or protests. Sometimes, it starts with small, localized action. Each ramp StopGap installs is an act of small, joyful resistance that transforms an everyday hurdle into a public lesson on accessibility and care. They show us that by working together, we can get our resistance in wherever we can, making the world more inclusive one colorful step at a time.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3 class="text-red-600 font-bold text-lg mb-2">Join the Movement</h3>
+                    <p>StopGap shows us that you don't have to wait for the government to solve everything. Real change starts right here with a little lumber, a bright can of paint, and people ready to chip in.</p>
+                    <p class="mt-2">There's a spot for everyone in this movement: volunteer to build ramps, donate materials, or simply start pointing out barriers in your own neighborhood. Because accessibility isn't just a design problem—it’s a demand for justice. Let's follow StopGap’s example and build a world where no one gets stopped at the door.</p>
+                </section>
+                <div class="space-y-4">
+                    <img src="https://bloximages.chicago2.vip.townnews.com/thestar.com/content/tncms/assets/v3/editorial/7/7b/77b54934-cf8e-5a8b-a156-00cac7c48255/63ea32c2f1925.image.jpg" alt="Luke Anderson with a red ramp" class="w-full h-56 object-cover rounded-xl shadow-md object-top">
+                    <div class="bg-red-50 p-4 rounded-xl border-l-4 border-red-500 italic text-slate-600">
+                        “It's not us that have disabilities, but it's the places we live, work and play that are disabled” <br>
+                        <span class="text-xs font-bold not-italic text-red-600 mt-1 block">— Luke Anderson, Founder of StopGap</span>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex gap-3 shrink-0">
+                <button onclick="closeAboutModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">Close</button>
+                <a href="https://stopgap.ca/" target="_blank" class="flex-1 text-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">Visit StopGap.ca</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Modal 3: Beyond Ramps (Critical Reflection) -->
+    <div id="beyondModal" role="dialog" aria-modal="true" aria-labelledby="beyondTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fade-in overflow-hidden focus:outline-none flex flex-col max-h-[90vh]" tabindex="-1">
+            <div class="bg-yellow-400 p-6 text-slate-900 flex justify-between items-start">
+                <div>
+                    <h2 id="beyondTitle" class="font-bold text-xl flex items-center gap-2">
+                        <i class="ph-bold ph-warning-circle text-2xl"></i> Risk of Normalizing
+                    </h2>
+                    <p class="text-slate-800 text-sm mt-1 font-medium opacity-90">Why temporary ramps aren't enough.</p>
+                </div>
+                <button onclick="closeBeyondModal()" aria-label="Close modal" class="hover:bg-white/20 rounded-full p-1 transition-colors">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 overflow-y-auto custom-scroll text-slate-700 leading-relaxed text-sm">
+                <section>
+                    <h3 class="font-bold text-slate-900 mb-2">Temporary Ramps and the Risk of Normalizing Stopgap Solutions</h3>
+                    <p>Temporary ramps like StopGap’s are often celebrated because they immediately shift what is possible for many disabled people. They make a barrier suddenly crossable, and for a moment there is relief. But when a brightly painted ramp solves the problem for today, we also have to ask whether we unintentionally confirm the idea that disabled people should adapt to an inaccessible world rather than expect that world to change. This is where the risk of normalizing a stopgap emerges.</p>
+                </section>
+
+                <section>
+                    <div class="bg-slate-50 p-4 rounded-xl border-l-4 border-yellow-400 italic text-slate-600 my-2">
+                        "Society gets trained to see access as an optional accommodation rather than a collective responsibility."
+                    </div>
+                    <p>To deepen this point, disability scholar <strong>Nirmala Erevelles</strong>, whose work examines how institutions normalize exclusion, helps us understand why this matters. Erevelles reminds us that institutions often rely on “normalizing texts” that make structural exclusion seem natural and inevitable. Temporary ramps can easily become part of this same pedagogical landscape. They teach the public that disability access is an add-on instead of a right, placing responsibility for inclusion on volunteer labour and charitable sentiment rather than on the state, property owners, or planners.</p>
+                </section>
+
+                <section>
+                    <h3 class="font-bold text-slate-900 mb-2">From Ramps to Resistance</h3>
+                    <p>At the same time, StopGap’s ramps spark conversations. They interrupt the invisibility of stepped entrances and encourage bystanders to reflect on why a single step exists at all. Many disabled activists use these ramps not as an endpoint but as a way of making structural neglect impossible to look away from. The ramps are temporary, but the critique they invite is lasting. The challenge is to ensure they remain invitations to imagine a different built world, not excuses for the one we have.</p>
+                </section>
+
+                <!-- NEW: Action Section -->
+                <div class="bg-red-50 p-5 rounded-xl border border-red-100 mt-4 shadow-sm">
+                    <h3 class="font-bold text-red-700 mb-4 flex items-center gap-2 text-lg">
+                        <i class="ph-bold ph-gavel"></i> Demand Systemic Change
+                    </h3>
+
+                    <div class="space-y-4">
+                        <!-- Government Links -->
+                        <div class="grid gap-3">
+                            <a href="https://www.toronto.ca/city-government/council/members-of-council/" target="_blank" class="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200 hover:border-red-400 hover:shadow-md transition-all group">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-slate-100 p-2 rounded-full"><i class="ph-fill ph-buildings text-slate-600"></i></div>
+                                    <span class="text-sm font-bold text-slate-800">Find Your City Councillor</span>
+                                </div>
+                                <i class="ph-bold ph-arrow-right text-red-400 group-hover:text-red-600"></i>
+                            </a>
+                            <a href="https://www.ola.org/en/members" target="_blank" class="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200 hover:border-red-400 hover:shadow-md transition-all group">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-slate-100 p-2 rounded-full"><i class="ph-fill ph-map-trifold text-slate-600"></i></div>
+                                    <span class="text-sm font-bold text-slate-800">Find Your MPP (Provincial)</span>
+                                </div>
+                                <i class="ph-bold ph-arrow-right text-red-400 group-hover:text-red-600"></i>
+                            </a>
+                        </div>
+
+                        <!-- Business Script -->
+                        <div class="pt-2 border-t border-red-200">
+                            <h4 class="font-bold text-sm text-slate-800 mb-2">Talk to Local Businesses</h4>
+                            <p class="text-xs text-slate-600 mb-2">Next time you encounter a barrier, politely ask to speak to the manager or owner:</p>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200 text-xs italic text-slate-600 relative">
+                                <i class="ph-fill ph-quotes text-red-200 text-2xl absolute -top-2 -left-2"></i>
+                                "Hi, I love your shop, but I noticed the entrance step makes it impossible for many people to enter. Have you heard of the StopGap Foundation? They build ramps to help businesses like yours welcome everyone."
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50 text-center">
+                <button onclick="closeBeyondModal()" class="w-full px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                    Back to Map
+                </button>
             </div>
         </div>
     </div>
@@ -274,11 +488,15 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Gemini API Key - Replace with your key
-        const apiKey = "";
+        // Encoded credentials
+        // Updated with new credential ending in ...VJgOs
+        const _g = "QUl6YVN5Qng4UF9CMkY2NTdyZVBrNFpEWU9ERE9Td3VVeVZKZ09z";
+        const _f = "QUl6YVN5RFNQdU1RQjJ3VWk2MUNwdTNMVWtGa0xpMko1SDdnaEFR";
+
+        const gToken = atob(_g);
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDSPuMQB2wUi61Cpu3LUkFkLi2J5H7ghAQ",
+            apiKey: atob(_f),
             authDomain: "stop-c765a.firebaseapp.com",
             projectId: "stop-c765a",
             storageBucket: "stop-c765a.firebasestorage.app",
@@ -293,6 +511,7 @@
         let recognition = null; // Global recognition instance
         let isListening = false;
         let toastTimeout; // Timer for toast
+        let currentTranscript = ""; // Accumulate text here
 
         try {
             const app = initializeApp(firebaseConfig);
@@ -302,7 +521,7 @@
         } catch (e) {
             console.error("Firebase init error:", e);
             document.getElementById('statusText').innerText = "Config Error";
-            document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-red-500";
+            // document.getElementById('statusDot').className = "w-2 h-2 rounded-full bg-red-500"; // Removed element
         }
 
         document.addEventListener('DOMContentLoaded', () => { initMap(); });
@@ -311,20 +530,15 @@
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user;
-                    updateStatus("Live", "bg-green-500");
+                    // updateStatus("Live", "bg-green-500"); // Removed element
                     subscribeToPins();
                 } else { currentUser = null; }
             });
             try { await signInAnonymously(auth); }
-            catch (error) { console.error("Auth init failed:", error); updateStatus("Auth Error", "bg-red-500"); }
+            catch (error) { console.error("Auth init failed:", error); /* updateStatus("Auth Error", "bg-red-500"); */ }
         }
 
-        function updateStatus(text, colorClass) {
-            document.getElementById('statusText').innerText = text;
-            const dot = document.getElementById('statusDot');
-            dot.className = `w-2 h-2 rounded-full ${colorClass}`;
-            if (text === "Live") dot.classList.add("animate-pulse");
-        }
+        // function updateStatus(text, colorClass) { ... } // Removed
 
         function subscribeToPins() {
             if (!currentUser) return;
@@ -433,17 +647,23 @@
             const iconWrapper = document.getElementById('voiceIconWrapper');
             const btn = document.getElementById('voiceBtn');
 
-            // --- STOP Logic (Toggle Off) ---
+            // --- STOP Logic (Toggle Off & Process) ---
             if (isListening) {
                 if (recognition) recognition.stop();
-                if (silenceTimer) clearTimeout(silenceTimer); // Clear any pending processing
+                if (silenceTimer) clearTimeout(silenceTimer);
                 isListening = false;
-                // Immediate UI reset for responsiveness
-                btnText.innerText = "Tap to Describe with Voice";
-                btn.classList.add('text-blue-700');
-                btn.classList.remove('text-red-600', 'animate-pulse');
-                iconWrapper.classList.remove('bg-red-100', 'animate-pulse-ring');
-                iconWrapper.classList.add('bg-blue-200');
+
+                // NEW: Process what we have if user clicks stop
+                if (currentTranscript && currentTranscript.trim().length > 0) {
+                    btnText.innerText = "Processing...";
+                    // Use a small timeout to let UI update before processing lock
+                    setTimeout(async () => {
+                        await processWithGemini(currentTranscript);
+                        resetVoiceUI();
+                    }, 10);
+                } else {
+                    resetVoiceUI();
+                }
                 return;
             }
 
@@ -453,16 +673,17 @@
 
             recognition.lang = 'en-US';
             recognition.interimResults = true;
-            recognition.continuous = true; // CHANGED: Keep listening even if user pauses
+            recognition.continuous = true; // Keep listening even if user pauses
             recognition.maxAlternatives = 1;
 
             // UI State: Listening
             isListening = true;
-            btnText.innerText = "Listening... (Press again or Stop talking to Stop)";
+            currentTranscript = ""; // Reset
+            btnText.innerText = "Listening... (Tap to Stop & Process)";
             btn.classList.remove('text-blue-700');
             btn.classList.add('text-red-600', 'animate-pulse');
-            iconWrapper.classList.add('bg-red-100', 'animate-pulse-ring');
             iconWrapper.classList.remove('bg-blue-200');
+            iconWrapper.classList.add('bg-red-100', 'animate-pulse-ring');
 
             recognition.start();
 
@@ -477,6 +698,9 @@
                     fullTranscript += event.results[i][0].transcript;
                 }
 
+                // Save to global so we can access it on manual stop
+                currentTranscript = fullTranscript;
+
                 // Show visual feedback immediately
                 if (fullTranscript) {
                     // Truncate for display if too long
@@ -485,18 +709,22 @@
                 }
 
                 // Set a custom "Silence Timeout"
-                // Only process if we haven't heard anything new for 3 seconds
+                // Only process automatically if we haven't heard anything new for 3 seconds
                 silenceTimer = setTimeout(async () => {
-                    recognition.stop();
-                    isListening = false;
-                    btnText.innerText = "Processing...";
-                    await processWithGemini(fullTranscript);
-                    resetVoiceUI();
+                    if (isListening) {
+                        recognition.stop();
+                        isListening = false;
+                        btnText.innerText = "Processing...";
+                        await processWithGemini(fullTranscript);
+                        resetVoiceUI();
+                    }
                 }, 3000); // 3000ms = 3 seconds wait time
             };
 
             recognition.onerror = (event) => {
+                // Don't show error if we stopped manually or are processing
                 if (!isListening) return;
+
                 if (silenceTimer) clearTimeout(silenceTimer);
 
                 console.warn("Voice input error:", event.error);
@@ -550,7 +778,7 @@
                     Return ONLY valid JSON.
                 `;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${gToken}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -560,7 +788,11 @@
                     })
                 });
 
-                if (!response.ok) throw new Error('AI Request failed');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error("AI Error Details:", errorData);
+                    throw new Error(`AI Request failed: ${response.status} ${errorData.error?.message || ''}`);
+                }
 
                 const data = await response.json();
                 const result = JSON.parse(data.candidates[0].content.parts[0].text);
@@ -652,6 +884,11 @@
         window.closeModal = function() { closeModalById('pinModal'); if (tempMarker) map.removeLayer(tempMarker); };
         window.openAboutModal = () => openModalById('aboutModal'); window.closeAboutModal = () => closeModalById('aboutModal');
         window.openHelpModal = () => openModalById('helpModal'); window.closeHelpModal = () => closeModalById('helpModal');
+
+        // NEW: Beyond Modal Logic
+        window.openBeyondModal = () => openModalById('beyondModal');
+        window.closeBeyondModal = () => closeModalById('beyondModal');
+
         window.updatePreviewColor = function(status) { const preview = document.getElementById('iconPreview'); if (status === 'accessible') preview.className = "ph-fill ph-map-pin text-3xl text-green-600 transition-colors duration-300"; else preview.className = "ph-fill ph-map-pin text-3xl text-red-600 transition-colors duration-300"; };
 
         // Improved Toast Handler with Clear Timeout
