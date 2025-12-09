@@ -152,7 +152,6 @@
 
         <!-- Row 1: Search Bar + Find Me Button -->
         <div class="flex gap-2 w-full h-11">
-            <!-- Search Bar (Grows) -->
             <div class="relative group flex-1 h-full">
                 <input type="text" id="searchInput" placeholder="Search address in GTA..."
                     class="w-full h-full pl-10 pr-4 rounded-xl border border-slate-200 shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all"
@@ -160,7 +159,6 @@
                 <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-500 transition-colors"></i>
             </div>
 
-            <!-- Find Me Button (Fixed width, same height) -->
             <button onclick="locateUser()" class="h-full bg-white hover:bg-slate-50 text-slate-700 px-4 rounded-xl shadow-lg border border-slate-200 transition-all hover:scale-105 group flex items-center justify-center gap-2 whitespace-nowrap" title="Find My Location">
                 <i class="ph-bold ph-crosshair text-xl group-hover:text-red-600 transition-colors"></i>
                 <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900 hidden sm:inline">Find Me</span>
@@ -186,11 +184,18 @@
     <!-- Map Container -->
     <main id="map" aria-label="Interactive map of accessible locations in Toronto"></main>
 
+    <!-- NEW: Mobile-Only Find Me Button -->
+    <div class="absolute top-[220px] right-3 z-[1000] md:hidden">
+        <button onclick="locateUser()" class="bg-white hover:bg-slate-50 text-slate-700 p-3 rounded-xl shadow-lg border border-slate-200 transition-all active:scale-95 group" title="Find My Location">
+            <i class="ph-bold ph-crosshair text-xl group-hover:text-red-600 transition-colors"></i>
+        </button>
+    </div>
+
     <!-- Beyond Ramps Banner/Button -->
     <div class="absolute bottom-8 right-4 md:right-14 z-[1000] hidden md:block">
         <button onclick="openBeyondModal()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full text-sm font-bold shadow-xl flex items-center gap-3 border-2 border-white transition-all transform hover:-translate-y-1 hover:scale-105">
             <i class="ph-bold ph-megaphone text-yellow-300 text-2xl"></i>
-            <span class="drop-shadow-sm">Beyond ramps, We need to do more!</span>
+            <span class="drop-shadow-sm">Beyond ramps! We need to do more</span>
         </button>
     </div>
     <!-- Mobile version -->
@@ -260,20 +265,25 @@
                 </div>
             </div>
             <div class="p-6 space-y-6 overflow-y-auto custom-scroll text-slate-700 leading-relaxed text-sm">
+
                 <section>
                     <h3 class="text-red-600 font-bold text-lg mb-2">The Problem with One Step</h3>
                     <p>Think about your favorite local place—that corner café or bookstore you visit all the time. Now imagine walking up to the door and hitting a block. It’s not a big metal gate; it’s just a single, small step.</p>
                     <p class="mt-2">For most people, that step is totally fine. But for thousands of people in Canada using a wheelchair, a stroller, or a walker, that few inches of concrete is a complete barrier. It’s a message that says: <strong>You aren’t supposed to be here.</strong></p>
                     <p class="mt-2">The <strong>StopGap Foundation</strong> is an organization that refuses to let that message stick. They are taking simple barriers and transforming them into bright, loud, and temporary solutions. Through these colorful, community-built ramps, StopGap is pushing us to look closer at exclusion and imagine a world where everyone can easily get inside.</p>
                 </section>
+
                 <img src="https://stopgap.ca/wp-content/uploads/2017/04/DSC_5518.jpg" alt="StopGap team building ramps" class="w-full h-48 object-cover rounded-xl shadow-md">
+
                 <section>
                     <h3 class="text-red-600 font-bold text-lg mb-2">What is StopGap?</h3>
                     <p>Founded in Toronto by <strong>Luke Anderson</strong>, the StopGap Foundation is a grassroots movement that builds custom wooden ramps for single-step storefronts. You’ve probably seen them—they are usually painted in bright reds, blues, greens, and yellows that are impossible to miss.</p>
                     <p class="mt-2">But here’s the cool part: the ramps aren’t meant to be permanent fixes. StopGap is clear that the wooden ramps are only a temporary fix. The main goal is to spark conversations, pushing business owners, neighbors, and local leaders to ask why our world is built with these barriers in the first place.</p>
                     <p class="mt-2">StopGap volunteers team up with local businesses and schools to identify barriers and build these ramps together. Their Community Ramp Projects prove that accessibility isn't just a building code issue; it’s a community love language. When we build for access, we build a better space for everyone.</p>
                 </section>
+
                 <img src="https://scontent-yyz1-1.xx.fbcdn.net/v/t39.30808-6/489750546_1256864189300794_8467632592837100004_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=7S_P-SssD1sQ7kNvwE4bzfA&_nc_oc=Adk_JzBr6pLDzn35USsWIbfda-6S60CdbkNaeMUbFHngeFSaOEUYeZDuC6HvDRyB_dk&_nc_zt=23&_nc_ht=scontent-yyz1-1.xx&_nc_gid=xdrUrEMP1_Ee6xIRxx365A&oh=00_AflQjnO1mVvoAUYZTrBbUgQV32yMoT_zyXczxTlb2QRdrA&oe=693CFAB0" alt="A bright red StopGap ramp on a city street" class="w-full h-48 object-cover rounded-xl shadow-md grayscale hover:grayscale-0 transition-all duration-500">
+
                 <section>
                     <h3 class="text-red-600 font-bold text-lg mb-2">Why This Matters</h3>
                     <p class="mb-3">You might be thinking, "It's just a ramp, right?" Actually, it connects to some huge ideas about justice and power.</p>
@@ -283,22 +293,31 @@
                         <li><strong>Small Acts, Big Change:</strong> Change doesn't always start with massive laws or protests. Sometimes, it starts with small, localized action. Each ramp StopGap installs is an act of small, joyful resistance that transforms an everyday hurdle into a public lesson on accessibility and care. They show us that by working together, we can get our resistance in wherever we can, making the world more inclusive one colorful step at a time.</li>
                     </ul>
                 </section>
+
                 <section>
                     <h3 class="text-red-600 font-bold text-lg mb-2">Join the Movement</h3>
                     <p>StopGap shows us that you don't have to wait for the government to solve everything. Real change starts right here with a little lumber, a bright can of paint, and people ready to chip in.</p>
                     <p class="mt-2">There's a spot for everyone in this movement: volunteer to build ramps, donate materials, or simply start pointing out barriers in your own neighborhood. Because accessibility isn't just a design problem—it’s a demand for justice. Let's follow StopGap’s example and build a world where no one gets stopped at the door.</p>
                 </section>
+
                 <div class="space-y-4">
                     <img src="https://bloximages.chicago2.vip.townnews.com/thestar.com/content/tncms/assets/v3/editorial/7/7b/77b54934-cf8e-5a8b-a156-00cac7c48255/63ea32c2f1925.image.jpg" alt="Luke Anderson with a red ramp" class="w-full h-auto rounded-xl shadow-md object-top">
+
                     <div class="bg-red-50 p-4 rounded-xl border-l-4 border-red-500 italic text-slate-600">
                         “It's not us that have disabilities, but it's the places we live, work and play that are disabled” <br>
                         <span class="text-xs font-bold not-italic text-red-600 mt-1 block">— Luke Anderson, Founder of StopGap</span>
                     </div>
                 </div>
             </div>
+
+            <!-- Modal Footer -->
             <div class="p-4 border-t border-gray-100 bg-gray-50 flex gap-3 shrink-0">
-                <button onclick="closeAboutModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">Close</button>
-                <a href="https://stopgap.ca/" target="_blank" class="flex-1 text-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">Visit StopGap.ca</a>
+                <button onclick="closeAboutModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                    Close
+                </button>
+                <a href="https://stopgap.ca/" target="_blank" class="flex-1 text-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">
+                    Visit StopGap.ca
+                </a>
             </div>
         </div>
     </div>
