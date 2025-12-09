@@ -100,20 +100,27 @@
             cursor: pointer !important;
         }
 
-        .leaflet-top.leaflet-right { margin-top: 70px; }
-
-        /* Animation utilities */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        /* RESPONSIVE CONTROL POSITIONING */
+        /* Desktop Default */
+        .leaflet-top.leaflet-right {
+            margin-top: 80px;
+            transition: margin-top 0.3s ease;
         }
-        .animate-pulse-ring { animation: pulse-ring 1.5s infinite; }
 
-        *:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+        /* Mobile Adjustment: Increased to 240px to safely clear stacked filters */
+        @media (max-width: 768px) {
+            .leaflet-top.leaflet-right {
+                margin-top: 240px !important;
+            }
+        }
 
+        /* Focus outline for accessibility */
+        *:focus-visible {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
+
+        /* Custom scrollbar for modal */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -148,33 +155,36 @@
     </header>
 
     <!-- NEW: Organized Top Left Controls (Search & Filter & Find Me) -->
-    <div class="absolute top-[80px] left-4 z-[1000] flex flex-col gap-3 w-full max-w-sm">
+    <!-- Adjusted Top position for mobile to account for double-height header (approx 120px) -->
+    <div class="absolute top-[70px] left-2 right-12 md:left-4 md:right-auto md:w-full md:max-w-sm z-[1000] flex flex-col gap-3">
 
         <!-- Row 1: Search Bar + Find Me Button -->
-        <div class="flex gap-2 w-full h-11">
-            <div class="relative group flex-1 h-full">
-                <input type="text" id="searchInput" placeholder="Search address in GTA..."
-                    class="w-full h-full pl-10 pr-4 rounded-xl border border-slate-200 shadow-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all"
+        <div class="flex gap-2 w-full h-11 items-center">
+            <!-- Search Bar -->
+            <div class="relative group flex-1 h-full shadow-lg rounded-xl">
+                <input type="text" id="searchInput" placeholder="Search address..."
+                    class="w-full h-full pl-10 pr-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all"
                     onkeypress="handleSearch(event)">
                 <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-500 transition-colors"></i>
             </div>
 
-            <button onclick="locateUser()" class="h-full bg-white hover:bg-slate-50 text-slate-700 px-4 rounded-xl shadow-lg border border-slate-200 transition-all hover:scale-105 group flex items-center justify-center gap-2 whitespace-nowrap" title="Find My Location">
+            <!-- Find Me Button -->
+            <button onclick="locateUser()" class="h-full aspect-square md:aspect-auto md:px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl shadow-lg border border-slate-200 transition-all hover:scale-105 group flex items-center justify-center gap-2 whitespace-nowrap" title="Find My Location">
                 <i class="ph-bold ph-crosshair text-xl group-hover:text-red-600 transition-colors"></i>
-                <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900 hidden sm:inline">Find Me</span>
+                <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900 hidden md:inline">Find Me</span>
             </button>
         </div>
 
         <!-- Row 2: Filter Controls -->
-        <div class="bg-white/95 backdrop-blur rounded-xl shadow-lg border border-slate-200 p-2">
+        <div class="bg-white/95 backdrop-blur rounded-xl shadow-lg border border-slate-200 p-2 w-full">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block px-1">Filter Pins</span>
-            <div class="flex flex-wrap gap-1.5">
+            <div class="flex flex-wrap gap-1">
                 <button onclick="setFilter('all')" id="filter-all" class="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white transition-colors text-center">All</button>
                 <button onclick="setFilter('accessible')" id="filter-accessible" class="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-green-50 hover:text-green-600 transition-colors flex items-center justify-center gap-1">
-                    <i class="ph-fill ph-check-circle"></i> Accessible
+                    <i class="ph-fill ph-check-circle"></i> <span class="hidden sm:inline">Accessible</span>
                 </button>
                 <button onclick="setFilter('inaccessible')" id="filter-inaccessible" class="flex-1 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center gap-1">
-                    <i class="ph-fill ph-prohibit"></i> Barrier
+                    <i class="ph-fill ph-prohibit"></i> <span class="hidden sm:inline">Barrier</span>
                 </button>
             </div>
         </div>
@@ -183,13 +193,6 @@
 
     <!-- Map Container -->
     <main id="map" aria-label="Interactive map of accessible locations in Toronto"></main>
-
-    <!-- NEW: Mobile-Only Find Me Button -->
-    <div class="absolute top-[220px] right-3 z-[1000] md:hidden">
-        <button onclick="locateUser()" class="bg-white hover:bg-slate-50 text-slate-700 p-3 rounded-xl shadow-lg border border-slate-200 transition-all active:scale-95 group" title="Find My Location">
-            <i class="ph-bold ph-crosshair text-xl group-hover:text-red-600 transition-colors"></i>
-        </button>
-    </div>
 
     <!-- Beyond Ramps Banner/Button -->
     <div class="absolute bottom-8 right-4 md:right-14 z-[1000] hidden md:block">
@@ -226,18 +229,10 @@
                     <div class="pt-3 border-t border-slate-200">
                         <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Features</h3>
                         <div class="grid grid-cols-2 gap-2">
-                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded">
-                                <i class="ph-bold ph-magnifying-glass text-red-500"></i> Search Address
-                            </div>
-                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded">
-                                <i class="ph-bold ph-funnel text-red-500"></i> Filter Pins
-                            </div>
-                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded">
-                                <i class="ph-bold ph-crosshair text-red-500"></i> Find Location
-                            </div>
-                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded">
-                                <i class="ph-bold ph-microphone text-red-500"></i> Voice Entry
-                            </div>
+                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded"><i class="ph-bold ph-magnifying-glass text-red-500"></i> Search Address</div>
+                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded"><i class="ph-bold ph-funnel text-red-500"></i> Filter Pins</div>
+                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded"><i class="ph-bold ph-crosshair text-red-500"></i> Find Location</div>
+                            <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-1.5 rounded"><i class="ph-bold ph-microphone text-red-500"></i> Voice Entry</div>
                         </div>
                     </div>
                 </div>
@@ -265,59 +260,18 @@
                 </div>
             </div>
             <div class="p-6 space-y-6 overflow-y-auto custom-scroll text-slate-700 leading-relaxed text-sm">
-
-                <section>
-                    <h3 class="text-red-600 font-bold text-lg mb-2">The Problem with One Step</h3>
-                    <p>Think about your favorite local place—that corner café or bookstore you visit all the time. Now imagine walking up to the door and hitting a block. It’s not a big metal gate; it’s just a single, small step.</p>
-                    <p class="mt-2">For most people, that step is totally fine. But for thousands of people in Canada using a wheelchair, a stroller, or a walker, that few inches of concrete is a complete barrier. It’s a message that says: <strong>You aren’t supposed to be here.</strong></p>
-                    <p class="mt-2">The <strong>StopGap Foundation</strong> is an organization that refuses to let that message stick. They are taking simple barriers and transforming them into bright, loud, and temporary solutions. Through these colorful, community-built ramps, StopGap is pushing us to look closer at exclusion and imagine a world where everyone can easily get inside.</p>
-                </section>
-
+                <!-- Content preserved -->
+                <section><h3 class="text-red-600 font-bold text-lg mb-2">The Problem with One Step</h3><p>Think about your favorite local place—that corner café or bookstore you visit all the time. Now imagine walking up to the door and hitting a block. It’s not a big metal gate; it’s just a single, small step.</p><p class="mt-2">For most people, that step is totally fine. But for thousands of people in Canada using a wheelchair, a stroller, or a walker, that few inches of concrete is a complete barrier. It’s a message that says: <strong>You aren’t supposed to be here.</strong></p><p class="mt-2">The <strong>StopGap Foundation</strong> is an organization that refuses to let that message stick. They are taking simple barriers and transforming them into bright, loud, and temporary solutions. Through these colorful, community-built ramps, StopGap is pushing us to look closer at exclusion and imagine a world where everyone can easily get inside.</p></section>
                 <img src="https://stopgap.ca/wp-content/uploads/2017/04/DSC_5518.jpg" alt="StopGap team building ramps" class="w-full h-48 object-cover rounded-xl shadow-md">
-
-                <section>
-                    <h3 class="text-red-600 font-bold text-lg mb-2">What is StopGap?</h3>
-                    <p>Founded in Toronto by <strong>Luke Anderson</strong>, the StopGap Foundation is a grassroots movement that builds custom wooden ramps for single-step storefronts. You’ve probably seen them—they are usually painted in bright reds, blues, greens, and yellows that are impossible to miss.</p>
-                    <p class="mt-2">But here’s the cool part: the ramps aren’t meant to be permanent fixes. StopGap is clear that the wooden ramps are only a temporary fix. The main goal is to spark conversations, pushing business owners, neighbors, and local leaders to ask why our world is built with these barriers in the first place.</p>
-                    <p class="mt-2">StopGap volunteers team up with local businesses and schools to identify barriers and build these ramps together. Their Community Ramp Projects prove that accessibility isn't just a building code issue; it’s a community love language. When we build for access, we build a better space for everyone.</p>
-                </section>
-
+                <section><h3 class="text-red-600 font-bold text-lg mb-2">What is StopGap?</h3><p>Founded in Toronto by <strong>Luke Anderson</strong>, the StopGap Foundation is a grassroots movement that builds custom wooden ramps for single-step storefronts. You’ve probably seen them—they are usually painted in bright reds, blues, greens, and yellows that are impossible to miss.</p><p class="mt-2">But here’s the cool part: the ramps aren’t meant to be permanent fixes. StopGap is clear that the wooden ramps are only a temporary fix. The main goal is to spark conversations, pushing business owners, neighbors, and local leaders to ask why our world is built with these barriers in the first place.</p><p class="mt-2">StopGap volunteers team up with local businesses and schools to identify barriers and build these ramps together. Their Community Ramp Projects prove that accessibility isn't just a building code issue; it’s a community love language. When we build for access, we build a better space for everyone.</p></section>
                 <img src="https://scontent-yyz1-1.xx.fbcdn.net/v/t39.30808-6/489750546_1256864189300794_8467632592837100004_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=7S_P-SssD1sQ7kNvwE4bzfA&_nc_oc=Adk_JzBr6pLDzn35USsWIbfda-6S60CdbkNaeMUbFHngeFSaOEUYeZDuC6HvDRyB_dk&_nc_zt=23&_nc_ht=scontent-yyz1-1.xx&_nc_gid=xdrUrEMP1_Ee6xIRxx365A&oh=00_AflQjnO1mVvoAUYZTrBbUgQV32yMoT_zyXczxTlb2QRdrA&oe=693CFAB0" alt="A bright red StopGap ramp on a city street" class="w-full h-48 object-cover rounded-xl shadow-md grayscale hover:grayscale-0 transition-all duration-500">
-
-                <section>
-                    <h3 class="text-red-600 font-bold text-lg mb-2">Why This Matters</h3>
-                    <p class="mb-3">You might be thinking, "It's just a ramp, right?" Actually, it connects to some huge ideas about justice and power.</p>
-                    <ul class="space-y-4 list-decimal pl-4">
-                        <li><strong>Buildings Tell Us Who's Welcome:</strong> In many ways, the architecture all around us is an argument. When a bank or a café is designed with stairs but no ramp, the building is silently arguing that certain bodies are less important or less welcome. Disability justice advocates point out that our physical spaces communicate who belongs. StopGap's ramps are a public counter-argument. They disrupt that exclusion and use design to teach inclusion, proving that we can choose to build for everyone.</li>
-                        <li><strong>Resisting Exclusion:</strong> The issue of access goes beyond just ramps; it’s about ensuring that people aren't pushed out—or dis-located—from public life. When disabled people can't enter shared community spaces, it reinforces a harmful separation. StopGap resists this by ensuring disabled people are visible and present in the daily life of the neighborhood. Their work fights against the systems that keep marginalized people—especially those facing ableism layered with racism—out of sight and out of mind.</li>
-                        <li><strong>Small Acts, Big Change:</strong> Change doesn't always start with massive laws or protests. Sometimes, it starts with small, localized action. Each ramp StopGap installs is an act of small, joyful resistance that transforms an everyday hurdle into a public lesson on accessibility and care. They show us that by working together, we can get our resistance in wherever we can, making the world more inclusive one colorful step at a time.</li>
-                    </ul>
-                </section>
-
-                <section>
-                    <h3 class="text-red-600 font-bold text-lg mb-2">Join the Movement</h3>
-                    <p>StopGap shows us that you don't have to wait for the government to solve everything. Real change starts right here with a little lumber, a bright can of paint, and people ready to chip in.</p>
-                    <p class="mt-2">There's a spot for everyone in this movement: volunteer to build ramps, donate materials, or simply start pointing out barriers in your own neighborhood. Because accessibility isn't just a design problem—it’s a demand for justice. Let's follow StopGap’s example and build a world where no one gets stopped at the door.</p>
-                </section>
-
-                <div class="space-y-4">
-                    <img src="https://bloximages.chicago2.vip.townnews.com/thestar.com/content/tncms/assets/v3/editorial/7/7b/77b54934-cf8e-5a8b-a156-00cac7c48255/63ea32c2f1925.image.jpg" alt="Luke Anderson with a red ramp" class="w-full h-auto rounded-xl shadow-md object-top">
-
-                    <div class="bg-red-50 p-4 rounded-xl border-l-4 border-red-500 italic text-slate-600">
-                        “It's not us that have disabilities, but it's the places we live, work and play that are disabled” <br>
-                        <span class="text-xs font-bold not-italic text-red-600 mt-1 block">— Luke Anderson, Founder of StopGap</span>
-                    </div>
-                </div>
+                <section><h3 class="text-red-600 font-bold text-lg mb-2">Why This Matters</h3><p class="mb-3">You might be thinking, "It's just a ramp, right?" Actually, it connects to some huge ideas about justice and power.</p><ul class="space-y-4 list-decimal pl-4"><li><strong>Buildings Tell Us Who's Welcome:</strong> In many ways, the architecture all around us is an argument. When a bank or a café is designed with stairs but no ramp, the building is silently arguing that certain bodies are less important or less welcome. Disability justice advocates point out that our physical spaces communicate who belongs. StopGap's ramps are a public counter-argument. They disrupt that exclusion and use design to teach inclusion, proving that we can choose to build for everyone.</li><li><strong>Resisting Exclusion:</strong> The issue of access goes beyond just ramps; it’s about ensuring that people aren't pushed out—or dis-located—from public life. When disabled people can't enter shared community spaces, it reinforces a harmful separation. StopGap resists this by ensuring disabled people are visible and present in the daily life of the neighborhood. Their work fights against the systems that keep marginalized people—especially those facing ableism layered with racism—out of sight and out of mind.</li><li><strong>Small Acts, Big Change:</strong> Change doesn't always start with massive laws or protests. Sometimes, it starts with small, localized action. Each ramp StopGap installs is an act of small, joyful resistance that transforms an everyday hurdle into a public lesson on accessibility and care. They show us that by working together, we can get our resistance in wherever we can, making the world more inclusive one colorful step at a time.</li></ul></section>
+                <section><h3 class="text-red-600 font-bold text-lg mb-2">Join the Movement</h3><p>StopGap shows us that you don't have to wait for the government to solve everything. Real change starts right here with a little lumber, a bright can of paint, and people ready to chip in.</p><p class="mt-2">There's a spot for everyone in this movement: volunteer to build ramps, donate materials, or simply start pointing out barriers in your own neighborhood. Because accessibility isn't just a design problem—it’s a demand for justice. Let's follow StopGap’s example and build a world where no one gets stopped at the door.</p></section>
+                <div class="space-y-4"><img src="https://bloximages.chicago2.vip.townnews.com/thestar.com/content/tncms/assets/v3/editorial/7/7b/77b54934-cf8e-5a8b-a156-00cac7c48255/63ea32c2f1925.image.jpg" alt="Luke Anderson" class="w-full h-auto rounded-xl shadow-md object-top"><div class="bg-red-50 p-4 rounded-xl border-l-4 border-red-500 italic text-slate-600">“It's not us that have disabilities, but it's the places we live, work and play that are disabled” <br><span class="text-xs font-bold not-italic text-red-600 mt-1 block">— Luke Anderson, Founder of StopGap</span></div></div>
             </div>
-
-            <!-- Modal Footer -->
             <div class="p-4 border-t border-gray-100 bg-gray-50 flex gap-3 shrink-0">
-                <button onclick="closeAboutModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-                    Close
-                </button>
-                <a href="https://stopgap.ca/" target="_blank" class="flex-1 text-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">
-                    Visit StopGap.ca
-                </a>
+                <button onclick="closeAboutModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">Close</button>
+                <a href="https://stopgap.ca/" target="_blank" class="flex-1 text-center px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-lg shadow-red-500/30 transition-all">Visit StopGap.ca</a>
             </div>
         </div>
     </div>
@@ -632,48 +586,212 @@
         // --- Voice AI Logic ---
         let silenceTimer;
         window.toggleVoiceFill = function() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert("Voice input is not supported in this browser."); return; }
-            const btnText = document.getElementById('voiceBtnText'); const iconWrapper = document.getElementById('voiceIconWrapper');
-            if (isListening) { if (recognition) recognition.stop(); if (silenceTimer) clearTimeout(silenceTimer); isListening = false; if (currentTranscript && currentTranscript.trim().length > 0) { btnText.innerText = "Processing..."; setTimeout(async () => { await processWithGemini(currentTranscript); resetVoiceUI(); }, 10); } else { resetVoiceUI(); } return; }
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Voice input is not supported in this browser.");
+                return;
+            }
+
+            const btnText = document.getElementById('voiceBtnText');
+            const iconWrapper = document.getElementById('voiceIconWrapper');
+            const btn = document.getElementById('voiceBtn');
+
+            // --- STOP Logic (Simple Reset) ---
+            if (isListening) {
+                if (recognition) {
+                    recognition.stop();
+                    recognition = null; // Clear instance
+                }
+                if (silenceTimer) clearTimeout(silenceTimer);
+                isListening = false;
+                resetVoiceUI();
+                return;
+            }
+
+            // --- START Logic ---
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
-            recognition.lang = 'en-US'; recognition.interimResults = true; recognition.continuous = true; recognition.maxAlternatives = 1;
-            isListening = true; currentTranscript = ""; btnText.innerText = "Listening... (Tap to Stop & Process)"; document.getElementById('voiceBtn').classList.remove('text-blue-700'); document.getElementById('voiceBtn').classList.add('text-red-600', 'animate-pulse'); iconWrapper.classList.remove('bg-blue-200'); iconWrapper.classList.add('bg-red-100', 'animate-pulse-ring');
+            recognition.lang = 'en-US';
+            recognition.interimResults = true;
+            recognition.continuous = true;
+            recognition.maxAlternatives = 1;
+
+            isListening = true;
+            btnText.innerText = "Listening... (Tap to Stop)";
+            btn.classList.remove('text-blue-700');
+            btn.classList.add('text-red-600', 'animate-pulse');
+            iconWrapper.classList.remove('bg-blue-200');
+            iconWrapper.classList.add('bg-red-100', 'animate-pulse-ring');
+
             recognition.start();
+
             recognition.onresult = async (event) => {
                 if (silenceTimer) clearTimeout(silenceTimer);
+
                 let fullTranscript = "";
-                for (let i = 0; i < event.results.length; ++i) { fullTranscript += event.results[i][0].transcript; }
-                currentTranscript = fullTranscript;
-                if (fullTranscript) { const display = fullTranscript.length > 30 ? "..." + fullTranscript.slice(-30) : fullTranscript; btnText.innerText = `"${display}..."`; }
-                silenceTimer = setTimeout(async () => { if (isListening) { recognition.stop(); isListening = false; btnText.innerText = "Processing..."; await processWithGemini(fullTranscript); resetVoiceUI(); } }, 3000);
+                for (let i = 0; i < event.results.length; ++i) {
+                    fullTranscript += event.results[i][0].transcript;
+                }
+
+                // Visual Feedback
+                if (fullTranscript) {
+                    const display = fullTranscript.length > 30 ? "..." + fullTranscript.slice(-30) : fullTranscript;
+                    btnText.innerText = `"${display}..."`;
+                }
+
+                // Set a custom "Silence Timeout"
+                // Only process automatically if we haven't heard anything new for 3 seconds
+                silenceTimer = setTimeout(async () => {
+                    if (isListening && fullTranscript.trim().length > 0) {
+                        recognition.stop();
+                        isListening = false;
+                        btnText.innerText = "Processing...";
+                        await processWithGemini(fullTranscript);
+                        resetVoiceUI();
+                    }
+                }, 3000); // 3000ms = 3 seconds wait time
             };
-            recognition.onerror = (event) => { if (!isListening) return; if (silenceTimer) clearTimeout(silenceTimer); showToast("Voice error. Try typing."); resetVoiceUI(); };
-            recognition.onend = () => { if (isListening && !btnText.innerText.includes("Processing")) { resetVoiceUI(); } isListening = false; };
+
+            recognition.onerror = (event) => {
+                // FIXED: Ignore 'aborted' error which causes the breakage on mobile
+                if (event.error === 'aborted') return;
+
+                // Ignore no-speech in continuous mode
+                if (event.error === 'no-speech') return;
+
+                if (!isListening) return;
+                if (silenceTimer) clearTimeout(silenceTimer);
+
+                console.warn("Voice input error:", event.error);
+                let msg = "Voice error. Try typing.";
+
+                if (event.error === 'audio-capture') {
+                    msg = "No microphone found.";
+                } else if (event.error === 'not-allowed') {
+                    msg = "Microphone blocked.";
+                }
+
+                showToast(msg);
+                resetVoiceUI();
+            };
+
+            recognition.onend = () => {
+                // Only reset if we aren't currently processing a result
+                if (isListening && !btnText.innerText.includes("Processing")) {
+                    resetVoiceUI();
+                }
+                isListening = false;
+            };
         };
-        function resetVoiceUI() { const btn = document.getElementById('voiceBtn'); const iconWrapper = document.getElementById('voiceIconWrapper'); const btnText = document.getElementById('voiceBtnText'); if (silenceTimer) clearTimeout(silenceTimer); btnText.innerText = "Tap to Describe with Voice"; btn.classList.add('text-blue-700'); btn.classList.remove('text-red-600', 'animate-pulse'); iconWrapper.classList.remove('bg-red-100', 'animate-pulse-ring'); iconWrapper.classList.add('bg-blue-200'); isListening = false; }
+
+        function resetVoiceUI() {
+            const btn = document.getElementById('voiceBtn');
+            const iconWrapper = document.getElementById('voiceIconWrapper');
+            const btnText = document.getElementById('voiceBtnText');
+
+            if (silenceTimer) clearTimeout(silenceTimer);
+
+            btnText.innerText = "Tap to Describe with Voice";
+            btn.classList.add('text-blue-700');
+            btn.classList.remove('text-red-600', 'animate-pulse');
+            iconWrapper.classList.remove('bg-red-100', 'animate-pulse-ring');
+            iconWrapper.classList.add('bg-blue-200');
+            isListening = false;
+            recognition = null; // Clean up
+        }
+
         async function processWithGemini(transcript) {
             try {
-                const systemPrompt = `You are a data extractor. Extract 3 fields: 1. "name" (Business Name), 2. "desc" (Short description of accessibility), 3. "accessibility" ("accessible" or "inaccessible"). Return valid JSON.`;
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${gToken}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Description: "${transcript}"` }] }], systemInstruction: { parts: [{ text: systemPrompt }] }, generationConfig: { responseMimeType: "application/json" } }) });
-                if (!response.ok) throw new Error("AI failed");
-                const data = await response.json(); const result = JSON.parse(data.candidates[0].content.parts[0].text);
-                document.getElementById('pinName').value = result.name || ""; document.getElementById('pinDesc').value = result.desc || "";
+                const systemPrompt = `
+                    You are a data extractor. Extract 3 fields from the user's spoken description of a location:
+                    1. "name": The business name (Capitalized).
+                    2. "desc": A short description of the accessibility features/barriers.
+                    3. "accessibility": Either "accessible" (if they mention ramps, auto doors, no steps) or "inaccessible" (if they mention steps, stairs, heavy doors).
+                    4. Sometimes the transcript will not be 100% accurate, such as getting similar sounding words mixed up, in those situations try your best to guess their intent.
+                    Return ONLY valid JSON.
+                `;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${gToken}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Description: "${transcript}"` }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error("AI Error Details:", errorData);
+                    throw new Error(`AI Request failed: ${response.status} ${errorData.error?.message || ''}`);
+                }
+
+                const data = await response.json();
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+
+                // Populate Fields
+                document.getElementById('pinName').value = result.name || "";
+                document.getElementById('pinDesc').value = result.desc || "";
+
+                // Set Radio Button
                 const radioValue = result.accessibility === 'accessible' ? 'accessible' : 'inaccessible';
-                document.querySelector(`input[name="accessibility"][value="${radioValue}"]`).checked = true; window.updatePreviewColor(radioValue); showToast("Auto-filled from voice!");
-            } catch (error) { console.error("AI processing error:", error); document.getElementById('pinDesc').value = transcript; showToast("Text added."); }
+                document.querySelector(`input[name="accessibility"][value="${radioValue}"]`).checked = true;
+                window.updatePreviewColor(radioValue);
+
+                showToast("Auto-filled from voice!");
+
+            } catch (error) {
+                console.error("AI processing error:", error);
+                document.getElementById('pinDesc').value = transcript; // Fallback: just put text in description
+                showToast("Couldn't process structure, but text added.");
+            }
         }
 
         // --- Standard Handlers (Vote, Delete, Submit, Modals) ---
         window.handleVote = async function(pinId, type) { if (!currentUser) return showToast("Offline mode"); const storageKey = `vote_${pinId}`; const previousVote = localStorage.getItem(storageKey); const pinRef = doc(db, 'pins', pinId); try { if (previousVote === type) { await updateDoc(pinRef, type === 'up' ? { upvotes: increment(-1) } : { downvotes: increment(-1) }); localStorage.removeItem(storageKey); } else { const update = {}; if (previousVote) update[previousVote === 'up' ? 'upvotes' : 'downvotes'] = increment(-1); update[type === 'up' ? 'upvotes' : 'downvotes'] = increment(1); await updateDoc(pinRef, update); localStorage.setItem(storageKey, type); } showToast("Voted!"); } catch (err) { console.error("Vote failed", err); } };
         window.initDelete = function(id) { if (!currentUser) return; pinToDelete = id; openModalById('deleteModal'); };
         window.closeDeleteModal = function() { pinToDelete = null; closeModalById('deleteModal'); };
-        window.confirmDelete = async function() { if (!currentUser || !pinToDelete) return; const btn = document.querySelector('#deleteModal button.bg-red-600'); btn.innerText = "Deleting..."; btn.disabled = true; try { await deleteDoc(doc(db, 'pins', pinToDelete)); showToast("Location removed"); closeDeleteModal(); } catch (err) { showToast("Could not delete"); } finally { btn.innerText = "Delete"; btn.disabled = false; } };
-        window.handlePinSubmit = async function(e) { e.preventDefault(); if (!currentUser) { showToast("Wait for connection..."); return; } const name = document.getElementById('pinName').value; const desc = document.getElementById('pinDesc').value; const lat = parseFloat(document.getElementById('pinLat').value); const lng = parseFloat(document.getElementById('pinLng').value); const accessibility = document.querySelector('input[name="accessibility"]:checked').value; if (!name) return; const submitBtn = e.target.querySelector('button[type="submit"]'); submitBtn.innerText = "Adding..."; submitBtn.disabled = true; try { await addDoc(collection(db, 'pins'), { name, desc, lat, lng, accessibility, upvotes: 0, downvotes: 0, creatorId: currentUser.uid, createdAt: new Date().toISOString() }); if (tempMarker) map.removeLayer(tempMarker); closeModal(); showToast("Location added!"); document.getElementById('pinForm').reset(); } catch (err) { showToast("Error adding location"); } finally { submitBtn.innerText = "Add to Map"; submitBtn.disabled = false; } };
+        window.confirmDelete = async function() {
+            if (!currentUser || !pinToDelete) return;
+            const btn = document.querySelector('#deleteModal button.bg-red-600');
+            const originalText = btn.innerText;
+            btn.innerText = "Deleting..."; btn.disabled = true;
+            try { await deleteDoc(doc(db, 'pins', pinToDelete)); showToast("Location removed"); closeDeleteModal(); }
+            catch (err) { console.error("Delete failed:", err); showToast("Could not delete"); } finally { btn.innerText = originalText; btn.disabled = false; }
+        };
 
-        function trapFocus(modal) { const elements = modal.querySelectorAll('a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])'); const first = elements[0]; const last = elements[elements.length - 1]; modal.addEventListener('keydown', e => { if (e.key === 'Tab') { if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } } else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } } } if (e.key === 'Escape') closeModalById(modal.id); }); }
+        window.handlePinSubmit = async function(e) {
+            e.preventDefault();
+            if (!currentUser) { showToast("Wait for connection..."); return; }
+            const name = document.getElementById('pinName').value;
+            const desc = document.getElementById('pinDesc').value;
+            const lat = parseFloat(document.getElementById('pinLat').value);
+            const lng = parseFloat(document.getElementById('pinLng').value);
+            const accessibility = document.querySelector('input[name="accessibility"]:checked').value;
+            if (!name) return;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText; submitBtn.innerText = "Adding..."; submitBtn.disabled = true;
+            try {
+                await addDoc(collection(db, 'pins'), { name, desc, lat, lng, accessibility, upvotes: 0, downvotes: 0, creatorId: currentUser.uid, createdAt: new Date().toISOString() });
+                if (tempMarker) map.removeLayer(tempMarker); closeModal(); showToast("Location added!"); document.getElementById('pinForm').reset();
+            } catch (err) { console.error("Error adding pin:", err); showToast("Error adding location"); } finally { submitBtn.innerText = originalText; submitBtn.disabled = false; }
+        };
+
+        // --- Utils & Focus Management ---
+        function trapFocus(modal) {
+            const focusableElements = modal.querySelectorAll('a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex="0"], [contenteditable]');
+            const first = focusableElements[0]; const last = focusableElements[focusableElements.length - 1];
+            modal.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+                    else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+                }
+                if (e.key === 'Escape') closeModalById(modal.id);
+            });
+        }
         function openModalById(modalId) { lastFocusedElement = document.activeElement; const modal = document.getElementById(modalId); modal.classList.remove('hidden'); modal.focus(); trapFocus(modal); }
         function closeModalById(modalId) { const modal = document.getElementById(modalId); modal.classList.add('hidden'); if (lastFocusedElement) lastFocusedElement.focus(); }
+
         window.openModal = function(lat, lng) { document.getElementById('pinLat').value = lat; document.getElementById('pinLng').value = lng; window.updatePreviewColor('accessible'); document.querySelector('input[value="accessible"]').checked = true; openModalById('pinModal'); };
         window.closeModal = function() { closeModalById('pinModal'); if (tempMarker) map.removeLayer(tempMarker); };
         window.openAboutModal = () => openModalById('aboutModal'); window.closeAboutModal = () => closeModalById('aboutModal');
