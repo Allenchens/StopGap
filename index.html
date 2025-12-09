@@ -160,11 +160,16 @@
         <!-- Row 1: Search Bar + Find Me Button -->
         <div class="flex gap-2 w-full h-11 items-center">
             <!-- Search Bar -->
-            <div class="relative group flex-1 h-full shadow-lg rounded-xl">
+            <div class="relative group flex-1 h-full shadow-lg rounded-xl bg-white">
                 <input type="text" id="searchInput" placeholder="Search address..."
-                    class="w-full h-full pl-10 pr-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all"
-                    onkeypress="handleSearch(event)">
+                    class="w-full h-full pl-10 pr-12 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-medium transition-all"
+                    onkeypress="handleSearchKey(event)">
                 <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-red-500 transition-colors"></i>
+
+                <!-- NEW: Enter Button -->
+                <button onclick="performSearch()" class="absolute right-1 top-1 bottom-1 aspect-square bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-red-600 rounded-lg transition-colors flex items-center justify-center border border-slate-200" title="Search">
+                    <i class="ph-bold ph-arrow-right text-lg"></i>
+                </button>
             </div>
 
             <!-- Find Me Button -->
@@ -453,43 +458,50 @@
         }
 
         // --- NEW: Search Logic ---
-        window.handleSearch = async function(e) {
-            if (e.key === 'Enter') {
-                const query = document.getElementById('searchInput').value;
-                if (!query) return;
 
-                try {
-                    // Using Nominatim (OpenStreetMap)
-                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=-80.10,44.30,-78.50,43.10&bounded=1`);
-                    const data = await response.json();
+        // 1. Separate logic so it can be called by Enter key OR Button click
+        window.performSearch = async function() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return;
 
-                    if (data && data.length > 0) {
-                        const { lat, lon } = data[0];
+            try {
+                // Using Nominatim (OpenStreetMap)
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=-80.10,44.30,-78.50,43.10&bounded=1`);
+                const data = await response.json();
 
-                        // Remove previous search marker if exists
-                        if (searchMarker) {
-                            map.removeLayer(searchMarker);
-                        }
+                if (data && data.length > 0) {
+                    const { lat, lon } = data[0];
 
-                        // Add new circle marker
-                        searchMarker = L.circleMarker([lat, lon], {
-                            radius: 10,
-                            fillColor: "#3b82f6", // Blue
-                            color: "#ffffff",     // White border
-                            weight: 3,
-                            opacity: 1,
-                            fillOpacity: 0.8
-                        }).addTo(map);
-
-                        map.flyTo([lat, lon], 16);
-                        showToast(`Found: ${data[0].display_name.split(',')[0]}`);
-                    } else {
-                        showToast("Location not found in GTA");
+                    // Remove previous search marker if exists
+                    if (searchMarker) {
+                        map.removeLayer(searchMarker);
                     }
-                } catch (err) {
-                    console.error("Search error:", err);
-                    showToast("Search failed");
+
+                    // Add new circle marker
+                    searchMarker = L.circleMarker([lat, lon], {
+                        radius: 10,
+                        fillColor: "#3b82f6", // Blue
+                        color: "#ffffff",     // White border
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    map.flyTo([lat, lon], 16);
+                    showToast(`Found: ${data[0].display_name.split(',')[0]}`);
+                } else {
+                    showToast("Location not found in GTA");
                 }
+            } catch (err) {
+                console.error("Search error:", err);
+                showToast("Search failed");
+            }
+        }
+
+        // 2. Keyboard handler (calls logic if key is Enter)
+        window.handleSearchKey = function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
             }
         };
 
@@ -608,10 +620,16 @@ window.toggleVoiceFill = function() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
 
-    recognition.lang = 'en-US';
-    recognition.interimResults = true;
+    // Check for Android (Chrome) to fix the repetition bug
+    const isAndroid = /Android/i.test(navigator.userAgent);
 
-    // CHANGED: Set to true so it doesn't stop on the first pause
+    recognition.lang = 'en-US';
+
+    // BUG FIX: On Android Chrome, interimResults=true causes duplication/garbage text.
+    // We disable it on Android so text only appears when "final" (chunks), preventing the bug.
+    recognition.interimResults = !isAndroid;
+
+    // Keep continuous=true for the 3-second pause feature
     recognition.continuous = true;
     recognition.maxAlternatives = 1;
 
