@@ -584,120 +584,112 @@
             `;
         }
 
-        // --- Voice AI Logic ---
-        let silenceTimer;
-        window.toggleVoiceFill = function() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert("Voice input is not supported in this browser.");
-                return;
-            }
+// --- Voice AI Logic ---
+let silenceTimer;
 
-            const btnText = document.getElementById('voiceBtnText');
-            const iconWrapper = document.getElementById('voiceIconWrapper');
-            const btn = document.getElementById('voiceBtn');
+window.toggleVoiceFill = function() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert("Voice input is not supported in this browser.");
+        return;
+    }
 
-            // Prevent restart if already processing AI response
-            if (isProcessing) return;
+    const btnText = document.getElementById('voiceBtnText');
+    const iconWrapper = document.getElementById('voiceIconWrapper');
+    const btn = document.getElementById('voiceBtn');
 
-            // --- STOP Logic (Toggle Off & Process) ---
-            if (isListening) {
-                if (recognition) recognition.stop();
-                if (silenceTimer) clearTimeout(silenceTimer);
-                isListening = false;
+    // 1. STOP Logic (Manual Stop)
+    if (isListening) {
+        if (recognition) recognition.stop();
+        // The onend handler will take care of processing
+        return;
+    }
 
-                // Force process what we have if user clicks stop manually
-                if (currentTranscript && currentTranscript.trim().length > 0) {
-                    btnText.innerText = "Processing...";
-                    isProcessing = true; // Lock
-                    setTimeout(async () => {
-                        await processWithGemini(currentTranscript);
-                        resetVoiceUI();
-                    }, 10);
-                } else {
-                    resetVoiceUI();
-                }
-                return;
-            }
+    // 2. START Logic
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
 
-            // --- START Logic ---
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
 
-            recognition.lang = 'en-US';
-            recognition.interimResults = true;
-            recognition.continuous = true;
-            recognition.maxAlternatives = 1;
+    // CHANGED: Set to true so it doesn't stop on the first pause
+    recognition.continuous = true;
+    recognition.maxAlternatives = 1;
 
-            isListening = true;
-            currentTranscript = "";
-            btnText.innerText = "Listening... (Tap to Stop & Process)";
-            btn.classList.remove('text-blue-700');
-            btn.classList.add('text-red-600', 'animate-pulse');
-            iconWrapper.classList.remove('bg-blue-200');
-            iconWrapper.classList.add('bg-red-100', 'animate-pulse-ring');
+    isListening = true;
+    isProcessing = false;
+    currentTranscript = "";
 
-            recognition.start();
+    // UI Updates
+    btnText.innerText = "Listening... (Tap to Finish)";
+    btn.classList.remove('text-blue-700');
+    btn.classList.add('text-red-600', 'animate-pulse');
+    iconWrapper.classList.remove('bg-blue-200');
+    iconWrapper.classList.add('bg-red-100', 'animate-pulse-ring');
 
-            recognition.onresult = async (event) => {
-                if (silenceTimer) clearTimeout(silenceTimer);
+    recognition.start();
 
-                let fullTranscript = "";
-                // Reset and rebuild transcript from scratch to prevent doubling
-                for (let i = 0; i < event.results.length; ++i) {
-                    fullTranscript += event.results[i][0].transcript;
-                }
+    // Helper to trigger processing safely
+    const triggerProcessing = async () => {
+        if (isProcessing || !currentTranscript.trim()) {
+            resetVoiceUI();
+            return;
+        }
 
-                currentTranscript = fullTranscript;
+        isProcessing = true; // Lock
+        isListening = false;
+        if (silenceTimer) clearTimeout(silenceTimer);
 
-                if (fullTranscript) {
-                    const display = fullTranscript.length > 30 ? "..." + fullTranscript.slice(-30) : fullTranscript;
-                    btnText.innerText = `"${display}..."`;
-                }
+        btnText.innerText = "Processing...";
+        await processWithGemini(currentTranscript);
+        resetVoiceUI();
+    };
 
-                // Debounce Silence Timer
-                silenceTimer = setTimeout(async () => {
-                    if (isListening && currentTranscript.trim().length > 0) {
-                        recognition.stop();
-                        isListening = false;
-                        isProcessing = true; // Lock
-                        btnText.innerText = "Processing...";
-                        await processWithGemini(fullTranscript);
-                        resetVoiceUI();
-                    }
-                }, 3000);
-            };
+    recognition.onresult = (event) => {
+        if (silenceTimer) clearTimeout(silenceTimer);
 
-            recognition.onerror = (event) => {
-                // FIXED: Ignore 'aborted' error which causes the breakage on mobile
-                if (event.error === 'aborted') return;
+        // Rebuild transcript from all segments (essential for continuous mode)
+        let fullTranscript = "";
+        for (let i = 0; i < event.results.length; ++i) {
+            fullTranscript += event.results[i][0].transcript;
+        }
+        currentTranscript = fullTranscript;
 
-                // Ignore no-speech in continuous mode
-                if (event.error === 'no-speech') return;
+        if (fullTranscript) {
+            const display = fullTranscript.length > 30 ? "..." + fullTranscript.slice(-30) : fullTranscript;
+            btnText.innerText = `"${display}..."`;
+        }
 
-                if (!isListening) return;
-                if (silenceTimer) clearTimeout(silenceTimer);
+        // CHANGED: Increased timeout to 3000ms (3 seconds) of silence
+        silenceTimer = setTimeout(() => {
+            recognition.stop();
+        }, 3000);
+    };
 
-                console.warn("Voice input error:", event.error);
-                let msg = "Voice error. Try typing.";
+    recognition.onerror = (event) => {
+        // If 'aborted' happens but we have text, process it (common on mobile)
+        if (event.error === 'aborted' && currentTranscript.trim().length > 0) {
+            recognition.stop();
+            return;
+        }
 
-                if (event.error === 'audio-capture') {
-                    msg = "No microphone found.";
-                } else if (event.error === 'not-allowed') {
-                    msg = "Microphone blocked.";
-                }
+        if (event.error === 'no-speech') return;
 
-                showToast(msg);
-                resetVoiceUI();
-            };
+        console.warn("Voice error:", event.error);
+        if (!currentTranscript.trim()) {
+            showToast("Microphone error. Try typing.");
+        }
+    };
 
-            recognition.onend = () => {
-                // Only reset if we aren't currently processing a result
-                if (isListening && !btnText.innerText.includes("Processing")) {
-                    resetVoiceUI();
-                }
-                isListening = false;
-            };
-        };
+    recognition.onend = () => {
+        // If the browser cuts the connection (even before our timer),
+        // we still process whatever text we captured.
+        if (currentTranscript.trim().length > 0 && !isProcessing) {
+            triggerProcessing();
+        } else {
+            resetVoiceUI();
+        }
+    };
+};
 
         function resetVoiceUI() {
             const btn = document.getElementById('voiceBtn');
