@@ -107,10 +107,10 @@
             transition: margin-top 0.3s ease;
         }
 
-        /* Mobile Adjustment: Increased to 240px to safely clear stacked filters */
+        /* Mobile Adjustment: Increased to 320px to safely clear stacked controls & search results */
         @media (max-width: 768px) {
             .leaflet-top.leaflet-right {
-                margin-top: 240px !important;
+                margin-top: 320px !important;
             }
         }
 
@@ -131,7 +131,7 @@
 <body class="bg-gray-100 font-sans text-slate-800">
 
     <!-- Top Navigation Bar -->
-    <header class="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-md shadow-md px-4 py-3 flex justify-between items-center border-b border-gray-200">
+    <header class="absolute top-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-md shadow-md px-4 py-3 flex flex-wrap justify-between items-center border-b border-gray-200 gap-y-2">
         <div class="flex items-center gap-3">
             <img src="https://accessibleicon.org/img/accessible-icon.jpg" alt="AccessMap Logo" class="h-10 w-10 rounded-md shadow-sm object-cover" aria-hidden="true">
             <div>
@@ -140,23 +140,22 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
-            <button id="helpBtn" onclick="openHelpModal()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1">
+        <!-- Buttons Wrapper: Use flex-wrap to allow stacking on very narrow screens, otherwise side-by-side -->
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
+            <button id="helpBtn" onclick="openHelpModal()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1 flex-1 sm:flex-none justify-center min-w-fit">
                 <i class="ph-bold ph-hand-heart" aria-hidden="true"></i>
-                <span class="hidden sm:inline">How to Use</span>
-                <span class="sr-only md:hidden">Help</span>
+                <span class="whitespace-nowrap">How to Use</span>
             </button>
-            <button id="aboutBtn" onclick="openAboutModal()" class="bg-slate-900 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1">
+            <button id="aboutBtn" onclick="openAboutModal()" class="bg-slate-900 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors shadow-sm flex items-center gap-1 flex-1 sm:flex-none justify-center min-w-fit">
                 <i class="ph-bold ph-info" aria-hidden="true"></i>
-                <span class="hidden sm:inline">Inspired by StopGap - Learn More</span>
-                <span class="sr-only md:hidden">About</span>
+                <span class="whitespace-nowrap">Inspired by StopGap - Learn More</span>
             </button>
         </div>
     </header>
 
     <!-- NEW: Organized Top Left Controls (Search & Filter & Find Me) -->
-    <!-- Adjusted Top position for mobile to account for double-height header (approx 120px) -->
-    <div class="absolute top-[70px] left-2 right-12 md:left-4 md:right-auto md:w-full md:max-w-sm z-[1000] flex flex-col gap-3">
+    <!-- Adjusted Top position for mobile to account for potentially taller header (approx 130px if wrapped) -->
+    <div class="absolute top-[140px] left-2 right-12 md:top-[80px] md:left-4 md:right-auto md:w-full md:max-w-sm z-[1000] flex flex-col gap-3 transition-all duration-300">
 
         <!-- Row 1: Search Bar + Find Me Button -->
         <div class="flex gap-2 w-full h-11 items-center">
@@ -169,7 +168,7 @@
             </div>
 
             <!-- Find Me Button -->
-            <button onclick="locateUser()" class="h-full aspect-square md:aspect-auto md:px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl shadow-lg border border-slate-200 transition-all hover:scale-105 group flex items-center justify-center gap-2 whitespace-nowrap" title="Find My Location">
+            <button onclick="locateUser()" class="h-full bg-white hover:bg-slate-50 text-slate-700 px-4 rounded-xl shadow-lg border border-slate-200 transition-all hover:scale-105 group flex items-center justify-center gap-2 whitespace-nowrap" title="Find My Location">
                 <i class="ph-bold ph-crosshair text-xl group-hover:text-red-600 transition-colors"></i>
                 <span class="text-xs font-bold text-slate-600 group-hover:text-slate-900 hidden md:inline">Find Me</span>
             </button>
@@ -194,6 +193,8 @@
     <!-- Map Container -->
     <main id="map" aria-label="Interactive map of accessible locations in Toronto"></main>
 
+    <!-- NEW: Mobile-Only Find Me Button REMOVED (Consolidated into top search bar) -->
+
     <!-- Beyond Ramps Banner/Button -->
     <div class="absolute bottom-8 right-4 md:right-14 z-[1000] hidden md:block">
         <button onclick="openBeyondModal()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full text-sm font-bold shadow-xl flex items-center gap-3 border-2 border-white transition-all transform hover:-translate-y-1 hover:scale-105">
@@ -208,6 +209,7 @@
         </button>
     </div>
 
+    <!-- Modals (Help, About, Beyond, Pin, Delete) remain largely same but preserved -->
     <!-- Modal 1: How to Use -->
     <div id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" class="hidden absolute inset-0 z-[2000] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in overflow-hidden focus:outline-none" tabindex="-1">
@@ -218,14 +220,12 @@
             <div class="p-6">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
                     <p class="text-sm text-slate-700 leading-relaxed"><strong>Help your community navigate!</strong> By marking locations, you act as eyes and ears for neighbors who need access.</p>
-
                     <ul class="text-sm text-slate-600 space-y-3">
                         <li class="flex items-start gap-3"><div class="bg-green-100 p-1.5 rounded-full text-green-600 mt-0.5"><i class="ph-fill ph-check-circle"></i></div><div><strong class="text-slate-800">Accessible Entry</strong><br>Mark stores with no steps, or where a permanent ramp/automatic door exists.</div></li>
                         <li class="flex items-start gap-3"><div class="bg-red-100 p-1.5 rounded-full text-red-600 mt-0.5"><i class="ph-fill ph-prohibit"></i></div><div><strong class="text-slate-800">Needs Ramp / Barrier</strong><br>Mark stores with a single step entry or other barriers preventing access.</div></li>
                         <li class="flex items-start gap-3"><div class="bg-blue-100 p-1.5 rounded-full text-blue-600 mt-0.5"><i class="ph-fill ph-thumbs-up"></i></div><div><strong class="text-slate-800">Verify Accuracy</strong><br>Use <strong>Thumb Up</strong> to confirm info is correct, or <strong>Thumb Down</strong> if it's outdated or wrong.</div></li>
                     </ul>
-
-                    <!-- Moved Features Instructions -->
+                    <!-- Features Instructions -->
                     <div class="pt-3 border-t border-slate-200">
                         <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Features</h3>
                         <div class="grid grid-cols-2 gap-2">
@@ -382,6 +382,7 @@
         let currentFilter = 'all'; // Default Filter
         let allPinsData = {}; // Store raw pin data locally
         let searchMarker = null; // Add this
+        let isProcessing = false; // Voice lock
 
         try {
             const app = initializeApp(firebaseConfig);
@@ -595,28 +596,41 @@
             const iconWrapper = document.getElementById('voiceIconWrapper');
             const btn = document.getElementById('voiceBtn');
 
-            // --- STOP Logic (Simple Reset) ---
+            // Prevent restart if already processing AI response
+            if (isProcessing) return;
+
+            // --- STOP Logic (Toggle Off & Process) ---
             if (isListening) {
-                if (recognition) {
-                    recognition.stop();
-                    recognition = null; // Clear instance
-                }
+                if (recognition) recognition.stop();
                 if (silenceTimer) clearTimeout(silenceTimer);
                 isListening = false;
-                resetVoiceUI();
+
+                // Force process what we have if user clicks stop manually
+                if (currentTranscript && currentTranscript.trim().length > 0) {
+                    btnText.innerText = "Processing...";
+                    isProcessing = true; // Lock
+                    setTimeout(async () => {
+                        await processWithGemini(currentTranscript);
+                        resetVoiceUI();
+                    }, 10);
+                } else {
+                    resetVoiceUI();
+                }
                 return;
             }
 
             // --- START Logic ---
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
+
             recognition.lang = 'en-US';
             recognition.interimResults = true;
             recognition.continuous = true;
             recognition.maxAlternatives = 1;
 
             isListening = true;
-            btnText.innerText = "Listening... (Tap to Stop)";
+            currentTranscript = "";
+            btnText.innerText = "Listening... (Tap to Stop & Process)";
             btn.classList.remove('text-blue-700');
             btn.classList.add('text-red-600', 'animate-pulse');
             iconWrapper.classList.remove('bg-blue-200');
@@ -628,27 +642,29 @@
                 if (silenceTimer) clearTimeout(silenceTimer);
 
                 let fullTranscript = "";
+                // Reset and rebuild transcript from scratch to prevent doubling
                 for (let i = 0; i < event.results.length; ++i) {
                     fullTranscript += event.results[i][0].transcript;
                 }
 
-                // Visual Feedback
+                currentTranscript = fullTranscript;
+
                 if (fullTranscript) {
                     const display = fullTranscript.length > 30 ? "..." + fullTranscript.slice(-30) : fullTranscript;
                     btnText.innerText = `"${display}..."`;
                 }
 
-                // Set a custom "Silence Timeout"
-                // Only process automatically if we haven't heard anything new for 3 seconds
+                // Debounce Silence Timer
                 silenceTimer = setTimeout(async () => {
-                    if (isListening && fullTranscript.trim().length > 0) {
+                    if (isListening && currentTranscript.trim().length > 0) {
                         recognition.stop();
                         isListening = false;
+                        isProcessing = true; // Lock
                         btnText.innerText = "Processing...";
                         await processWithGemini(fullTranscript);
                         resetVoiceUI();
                     }
-                }, 3000); // 3000ms = 3 seconds wait time
+                }, 3000);
             };
 
             recognition.onerror = (event) => {
@@ -696,7 +712,7 @@
             iconWrapper.classList.remove('bg-red-100', 'animate-pulse-ring');
             iconWrapper.classList.add('bg-blue-200');
             isListening = false;
-            recognition = null; // Clean up
+            isProcessing = false; // Unlock
         }
 
         async function processWithGemini(transcript) {
@@ -744,6 +760,9 @@
                 console.error("AI processing error:", error);
                 document.getElementById('pinDesc').value = transcript; // Fallback: just put text in description
                 showToast("Couldn't process structure, but text added.");
+            } finally {
+                // Ensure UI resets even if AI fails
+                isProcessing = false;
             }
         }
 
